@@ -1,3 +1,5 @@
+/* Copyright @2012 by Justin Hines at Bitly under a very liberal license. See LICENSE in the source distribution. */
+
 #ifndef __BLOOM_H__
 #define __BLOOM_H__
 #include<stdint.h>
