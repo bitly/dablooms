@@ -1,17 +1,23 @@
 PREFIX = /usr/local
 LIBDIR = $(PREFIX)/lib
+INCDIR = $(PREFIX)/include
 DESTDIR =
+SRCDIR = src
+BLDDIR = build
 
-LDFLAGS = -g
+LDFLAGS = -g 
 LDLIBS = -lm
-CFLAGS = -g -Wall
+CFLAGS = -g -Wall -fPIC
 
+PYTHON = python
 INSTALL = install
 CC = gcc
 AR = ar
 
-SRCDIR = src
-BLDDIR = build
+PY_SRCDIR = pydablooms
+PY_MOD_DIR := $(shell $(PYTHON) -c "import distutils.sysconfig ; print distutils.sysconfig.get_python_lib()")
+PY_FLAGS = --build-lib=$(PY_BLDDIR) --build-temp=$(PY_BLDDIR)
+PY_BLDDIR = $(BLDDIR)/python
 
 SRCS_LIBDABLOOMS = md5.c dablooms.c
 SRCS_TESTS = test_dablooms.c
@@ -19,29 +25,46 @@ SRCS_TESTS = test_dablooms.c
 OBJS_LIBDABLOOMS = $(patsubst %.c, $(BLDDIR)/%.o, $(SRCS_LIBDABLOOMS))
 OBJS_TESTS = $(patsubst %.c, $(BLDDIR)/%.o, $(SRCS_TESTS))
 
-all: test_dablooms libdablooms
+all:  libdablooms pydablooms $(BLDDIR)/test_dablooms
 
-DEPS := $(patsubst %.o, %.o.deps, $(OBJS_LIBDABLOOMS) $(OBJS_TESTS)) 
 # sort removes duplicates
--include $(sort $(DEPS))
+DEPS := $(sort $(patsubst %.o, %.o.deps, $(OBJS_LIBDABLOOMS) $(OBJS_TESTS))) 
+-include $(DEPS)
 
-install: install_libdablooms
+install: install_libdablooms install_pydablooms
+
+install_libdablooms: $(DESTDIR)$(LIBDIR)/libdablooms.a $(DESTDIR)$(INCDIR)/dablooms.h
+
+install_pydablooms: $(DESTDIR)$(PY_MOD_DIR)/pydablooms.so
+
+libdablooms: $(BLDDIR)/libdablooms.a
+
+pydablooms: libdablooms $(PY_BLDDIR)/pydablooms.so
 
 $(DESTDIR)$(LIBDIR)/libdablooms.a: $(BLDDIR)/libdablooms.a
+
+$(DESTDIR)$(INCDIR)/dablooms.h: $(SRCDIR)/dablooms.h
+
+$(DESTDIR)$(PY_MOD_DIR)/pydablooms.so: $(PY_BLDDIR)/pydablooms.so
+	@echo " PY_INSTALL " $@
+	@$(INSTALL) -d $(dir $@)
+	@$(INSTALL) -D $< $@
+
+$(DESTDIR)$(PREFIX)/%:
 	@echo " INSTALL " $@
 	@$(INSTALL) -d $(dir $@)
 	@$(INSTALL) -D $< $@
 
-install_libdablooms: $(DESTDIR)$(LIBDIR)/libdablooms.a
-	
-libdablooms: $(BLDDIR)/libdablooms.a
-	
-$(BLDDIR)/test_dablooms: $(OBJS_TESTS) libdablooms
+$(BLDDIR)/test_dablooms: $(OBJS_TESTS) $(BLDDIR)/libdablooms.a 
 	@echo " LD " $@
 	@$(CC) -o $@ $(OBJS_TESTS) -L$(BLDDIR) $(LDFLAGS) -l dablooms $(LDLIBS)
 
 test: $(BLDDIR)/test_dablooms
 	$(BLDDIR)/test_dablooms
+
+$(PY_BLDDIR)/pydablooms.so: $(BLDDIR)/libdablooms.a
+	@echo " PY_BUILD" $@
+	@$(PYTHON) $(PY_SRCDIR)/setup.py build $(PY_FLAGS)
 
 $(BLDDIR)/%.o: $(SRCDIR)/%.c
 	@echo " CC " $@
@@ -53,7 +76,9 @@ $(BLDDIR)/libdablooms.a: $(OBJS_LIBDABLOOMS)
 	@rm -f $@
 	@$(AR) rcs $@ $^
 
-clean:
-	rm -f $(OBJS_LIBDABLOOMS) $(BLDDIR)/libdablooms.a $(OBJS_TESTS) $(BLDIR)/test_dablooms
+clean:		
+	$(PYTHON) $(PY_SRCDIR)/setup.py clean $(PY_FLAGS)
+	rm -f $(OBJS_LIBDABLOOMS) $(BLDDIR)/libdablooms.a $(OBJS_TESTS) $(BLDDIR)/test_dablooms $(DEPS) $(BLDDIR)/pydablooms.so
+	rmdir $(BLDDIR)
 
-.PHONY: all clean install install_libdablooms libdablooms test
+.PHONY: all clean install test install_libdablooms install_pydablooms libdablooms pydablooms
