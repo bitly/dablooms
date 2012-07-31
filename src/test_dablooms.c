@@ -11,63 +11,6 @@
 #define CAPACITY 100000
 #define ERROR_RATE .05
 
-int test_bitmap()
-{
-    int fd;
-    int fail = 0;
-    int pass = 0;
-    int i = 0;
-    bitmap_t *map;
-    
-    FILE *file;
-    if ((file = fopen(FILEPATH, "r"))) {
-        fclose(file);
-        remove(FILEPATH);
-    }
-    
-    if (!(fd = open(FILEPATH, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600))) {
-        fprintf(stderr, "ERROR: Could not open file %s with open\n", FILEPATH);
-        return EXIT_FAILURE;
-    }
-    
-    if (!(map = bitmap_create(fd, 1000, 0))) {
-        fprintf(stderr, "ERROR: Could not create bitmap with file");
-        return EXIT_FAILURE;
-    }
-    
-    for (i = 0; i < 2000; i++) {
-        bitmap_increment(map, i, 0);
-    }
-    
-    for (i = 0; i < 2000; i++) {
-        if (bitmap_check(map, i, 0)) {
-            pass++;
-        } else {
-            fail++;
-        }
-    }
-    
-    for (i = 0; i < 2000; i++) {
-        bitmap_decrement(map, i, 0);
-    }
-    
-    for (i = 0; i < 2000; i++) {
-        if (bitmap_check(map, i, 0)) {
-            fail++;
-        } else {
-            pass++;
-        }
-    }
-    
-    if (fail) {
-        fprintf(stderr, "failures %i\n", fail);
-    } else {
-        fprintf(stderr, ".");
-    }
-    bitmap_destroy(map);
-    
-    return 0;
-}
 
 void chomp_line(char *word)
 {
@@ -85,7 +28,7 @@ int test_scale()
     FILE *fp, *file;
     char word[128];
     scaling_bloom_t *bloom;
-    int i = 0;
+    int i, iremove = 0;
     int not_exist_pass = 0, not_exist_fail = 0;
     int exist_pass = 0, exist_fail = 0;
     
@@ -94,7 +37,7 @@ int test_scale()
         remove(FILEPATH);
     }
     
-    if (!(bloom = scaling_bloom_create(CAPACITY, ERROR_RATE, FILEPATH, 0))) {
+    if (!(bloom = new_scaling_bloom(CAPACITY, ERROR_RATE, FILEPATH, 0))) {
         fprintf(stderr, "ERROR: Could not create bloom filter\n");
         return EXIT_FAILURE;
     }
@@ -112,20 +55,20 @@ int test_scale()
     }
     
     fseek(fp, 0, SEEK_SET);
-    for (i = 0; fgets(word, 128, fp); i++) {
+    for (iremove = 0; fgets(word, 128, fp); iremove++) {
         if (word != NULL) {
-            if (i % 5 == 0) {
+            if (iremove % 5 == 0) {
                 chomp_line(word);
-                scaling_bloom_remove(bloom, word, i);
+                scaling_bloom_remove(bloom, word, iremove);
             }
         }
     }
     
     
     bitmap_flush(bloom->bitmap);
-    scaling_bloom_destroy(bloom);
+    free_scaling_bloom(bloom);
     
-    bloom = scaling_bloom_from_file(CAPACITY, ERROR_RATE, FILEPATH);
+    bloom = new_scaling_bloom_from_file(CAPACITY, ERROR_RATE, FILEPATH);
     
     fseek(fp, 0, SEEK_SET);
     for (i = 0; fgets(word, 128, fp); i++) {
@@ -148,13 +91,16 @@ int test_scale()
         }
     }
     
-    fprintf(stderr, "non exist pass: %i\n", not_exist_pass);
-    fprintf(stderr, "non exist fail: %i\n", not_exist_fail);
-    fprintf(stderr, "exist pass:     %i\n", exist_pass);
-    fprintf(stderr, "exist fail:     %i\n", exist_fail);
+    fprintf(stderr, "\nElements Added:   %i\n", i);
+    fprintf(stderr, "Elements Removed: %i\n\n", i/5);
+    fprintf(stderr, "True positives:   %i\n", exist_pass);
+    fprintf(stderr, "True negatives:   %i\n", not_exist_pass);
+    fprintf(stderr, "False positives:  %i\n", not_exist_fail);
+    fprintf(stderr, "False negatives:  %i\n\n", exist_fail);
+    fprintf(stderr, "Total size: %i kB\n", (int) bloom->num_bytes/1024);
     
     fclose(fp);
-    scaling_bloom_destroy(bloom);
+    free_scaling_bloom(bloom);
     
     return 0;
 }

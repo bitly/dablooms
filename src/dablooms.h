@@ -12,18 +12,15 @@ typedef struct {
 } bitmap_t;
 
 
-bitmap_t *bitmap_resize(bitmap_t *bitmap, size_t old_size, size_t new_size, int fromfile);
-bitmap_t *bitmap_create(int fd, size_t bytes, int fromfile);
+bitmap_t *bitmap_resize(bitmap_t *bitmap, size_t old_size, size_t new_size);
+bitmap_t *new_bitmap(int fd, size_t bytes);
 
 int bitmap_increment(bitmap_t *bitmap, unsigned int index, unsigned int offset);
 int bitmap_decrement(bitmap_t *bitmap, unsigned int index, unsigned int offset);
 int bitmap_check(bitmap_t *bitmap, unsigned int index, unsigned int offset);
-
 int bitmap_flush(bitmap_t *bitmap);
-void bitmap_destroy(bitmap_t *bitmap);
 
-int bitmap_get_bit(bitmap_t *bitmap, unsigned int index);
-int bitmap_set_bit(bitmap_t *bitmap, unsigned int index, unsigned int val);
+void free_bitmap(bitmap_t *bitmap);
 
 typedef struct {
     uint32_t *count;
@@ -43,14 +40,17 @@ typedef struct {
     size_t size;
     size_t num_bytes;
     double error_rate;
-    bitmap_t *bitmap;
+    bitmap_t *parent_bitmap;
     
 } counting_bloom_t;
 
-int counting_bloom_destroy(counting_bloom_t *bloom);
+int free_counting_bloom(counting_bloom_t *bloom);
+counting_bloom_t *new_counting_bloom(unsigned int capacity, double error_rate, const char *filename);
+counting_bloom_t *new_counting_bloom_from_file(unsigned int capacity, double error_rate, const char *filename);
 int counting_bloom_add(counting_bloom_t *bloom, const char *s);
 int counting_bloom_remove(counting_bloom_t *bloom, const char *s);
 int counting_bloom_check(counting_bloom_t *bloom, const char *s);
+
 
 typedef struct {
     uint64_t *preseq;
@@ -69,9 +69,9 @@ typedef struct {
     bitmap_t *bitmap;
 } scaling_bloom_t;
 
-scaling_bloom_t *scaling_bloom_create(unsigned int capacity, double error_rate, const char *filename, uint32_t id);
-scaling_bloom_t *scaling_bloom_from_file(unsigned int capacity, double error_rate, const char *filename);
-int scaling_bloom_destroy(scaling_bloom_t *bloom);
+scaling_bloom_t *new_scaling_bloom(unsigned int capacity, double error_rate, const char *filename, uint32_t id);
+scaling_bloom_t *new_scaling_bloom_from_file(unsigned int capacity, double error_rate, const char *filename);
+int free_scaling_bloom(scaling_bloom_t *bloom);
 int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, uint32_t id);
 int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, uint32_t id);
 int scaling_bloom_check(scaling_bloom_t *bloom, const char *s);

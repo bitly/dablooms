@@ -18,7 +18,7 @@
 #define SCALE_HEADER_BYTES (2*sizeof(uint64_t))
 #define SALT_SIZE 16
 
-void bitmap_destroy(bitmap_t *bitmap)
+void free_bitmap(bitmap_t *bitmap)
 {
     if ((munmap(bitmap->array, bitmap->bytes)) < 0) {
         perror("Error unmapping memory");
@@ -27,21 +27,27 @@ void bitmap_destroy(bitmap_t *bitmap)
     free(bitmap);
 }
 
-bitmap_t *bitmap_resize(bitmap_t *bitmap, size_t old_size, size_t new_size, int fromfile)
+bitmap_t *bitmap_resize(bitmap_t *bitmap, size_t old_size, size_t new_size)
 {
     int fd = bitmap->fd;
-    /* Stretch the file to the appropiate size (Make sure the kernel allocates disk space)" */
-    if (lseek(fd, new_size, SEEK_SET) < 0) {
-        perror("Error calling lseek() to set file size");
-        bitmap_destroy(bitmap);
-        close(fd);
-        return NULL;
-    }
-    /* Write something to the end of the file to insure it is the new size */
-    if(! fromfile) {
+    struct stat fileStat;
+    
+    fstat(fd, &fileStat);
+    size_t size = fileStat.st_size;
+    
+    /* Write something to the end of the file to insure allocated the space */
+    if (size == old_size) {
+        for (; size < new_size; size++) {
+            if (lseek(fd, size, SEEK_SET) < 0) {
+                perror("Error calling lseek() to set file size");
+                free_bitmap(bitmap);
+                close(fd);
+                return NULL;
+            }
+        }
         if (write(fd, "", 1) < 0) {
             perror("Error writing last byte of the file");
-            bitmap_destroy(bitmap);
+            free_bitmap(bitmap);
             close(fd);
             return NULL;
         }
@@ -52,14 +58,14 @@ bitmap_t *bitmap_resize(bitmap_t *bitmap, size_t old_size, size_t new_size, int 
     if ((bitmap->array) == NULL) {
         if ((bitmap->array = mmap(0, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED) {
             perror("Error init mmap");
-            bitmap_destroy(bitmap);
+            free_bitmap(bitmap);
             close(fd);
             return NULL;
         }
     } else {
         if ((bitmap->array = mremap(bitmap->array, old_size, new_size, MREMAP_MAYMOVE)) == MAP_FAILED) {
             perror("Error resizing mmap");
-            bitmap_destroy(bitmap);
+            free_bitmap(bitmap);
             close(fd);
             return NULL;
         }
@@ -69,7 +75,9 @@ bitmap_t *bitmap_resize(bitmap_t *bitmap, size_t old_size, size_t new_size, int 
     return bitmap;
 }
 
-bitmap_t *bitmap_create(int fd, size_t bytes, int fromfile)
+/* Create a new bitmap, not full featured, simple to give
+ * us a means of interacting with the 4 bit counters */
+bitmap_t *new_bitmap(int fd, size_t bytes)
 {
     bitmap_t *bitmap;
     
@@ -81,7 +89,7 @@ bitmap_t *bitmap_create(int fd, size_t bytes, int fromfile)
     bitmap->fd = fd;
     bitmap->array = NULL;
     
-    if ((bitmap = bitmap_resize(bitmap, 0, bytes, fromfile)) == NULL) {
+    if ((bitmap = bitmap_resize(bitmap, 0, bytes)) == NULL) {
         return NULL;
     }
     
@@ -110,6 +118,7 @@ int bitmap_increment(bitmap_t *bitmap, unsigned int index, unsigned int offset)
     return 0;
 }
 
+/* increments the four bit counter */
 int bitmap_decrement(bitmap_t *bitmap, unsigned int index, unsigned int offset)
 {
     uint32_t access = index / 2 + offset;
@@ -133,6 +142,7 @@ int bitmap_decrement(bitmap_t *bitmap, unsigned int index, unsigned int offset)
     return 0;
 }
 
+/* decrements the four bit counter */
 int bitmap_check(bitmap_t *bitmap, unsigned int index, unsigned int offset)
 {
     unsigned int access = index / 2 + offset;
@@ -153,11 +163,11 @@ int bitmap_flush(bitmap_t *bitmap)
     }
 }
 
-/* Each function has a unique salt, so we need at least x = nfuncs salts.
- * An MD5 hash is 16 bytes long, and each salt only needds to be 4 bytes long
+/* Each function has a unique salt, so we need at least nfuncs salts.
+ * An MD5 hash is 16 bytes long, and each salt only needds to be 4 bytes
  * Thus we can proportion 4 salts per each md5 hash we create as a salt.
  */
-void create_salts(counting_bloom_t *bloom)
+void new_salts(counting_bloom_t *bloom)
 {
     int div = bloom->nfuncs / 4;
     int mod = bloom->nfuncs % 4;
@@ -207,7 +217,7 @@ unsigned int *hash_func(counting_bloom_t *bloom, const char *key, unsigned int *
     return hashes;
 }
 
-int counting_bloom_destroy(counting_bloom_t *bloom)
+int free_counting_bloom(counting_bloom_t *bloom)
 {
     if (bloom != NULL) {
         free(bloom->header);
@@ -225,11 +235,21 @@ int counting_bloom_destroy(counting_bloom_t *bloom)
     return 0;
 }
 
-counting_bloom_t *bloom_setup(counting_bloom_t *bloom, unsigned int capacity, double error_rate,
-                              unsigned int offset, uint32_t id, unsigned int count)
+counting_bloom_t *counting_bloom_init(unsigned int capacity, double error_rate,
+                                      unsigned int offset, uint32_t id, unsigned int count)
 {
+    counting_bloom_t *bloom;
+    
+    if ((bloom = malloc(sizeof(counting_bloom_t))) == NULL) {
+        fprintf(stderr, "Error, could not realloc a new bloom filter\n");
+        return NULL;
+    }
+    if ((bloom->header = malloc(sizeof(counting_bloom_header_t))) == NULL) {
+        fprintf(stderr, "Error, could not malloc size for pointers of headers\n");
+        return NULL;
+    }
     bloom->salts = NULL;
-    bloom->bitmap = NULL;
+    bloom->parent_bitmap = NULL;
     bloom->capacity = capacity;
     bloom->error_rate = error_rate;
     bloom->offset = offset + HEADER_BYTES;
@@ -238,8 +258,43 @@ counting_bloom_t *bloom_setup(counting_bloom_t *bloom, unsigned int capacity, do
     bloom->size = ceil(bloom->nfuncs * bloom->counts_per_func);
     bloom->num_bytes = (int) ceil(bloom->size / 2 + HEADER_BYTES);
     bloom->hashes = calloc(bloom->nfuncs, sizeof(unsigned int));
-    create_salts(bloom);
+    new_salts(bloom);
+    
     return bloom;
+}
+
+counting_bloom_t *new_counting_bloom(unsigned int capacity, double error_rate, const char *filename)
+{
+    counting_bloom_t *cur_bloom; 
+    int fd; 
+    
+    if ((fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600)) < 0) {
+        perror("Opening File Failed");
+        fprintf(stderr, " %s \n", filename);
+        return NULL;
+    }
+
+    cur_bloom = counting_bloom_init(capacity, error_rate, 0, 0, 0);
+    cur_bloom->parent_bitmap = new_bitmap(fd, cur_bloom->num_bytes);
+    
+    return cur_bloom;
+}
+
+counting_bloom_t *counting_bloom_from_file(unsigned capacity, double error_rate, const char *filename)
+{
+    counting_bloom_t *cur_bloom; 
+    int fd; 
+    
+    if ((fd = open(filename, O_RDWR, (mode_t)0600)) < 0) {
+        perror("Opening File Failed");
+        fprintf(stderr, " %s \n", filename);
+        return NULL;
+    }
+
+    cur_bloom = counting_bloom_init(capacity, error_rate, 0, 0, 0);
+    cur_bloom->parent_bitmap = new_bitmap(fd, cur_bloom->num_bytes);
+    
+    return cur_bloom;
 }
 
 int counting_bloom_add(counting_bloom_t *bloom, const char *s)
@@ -252,7 +307,7 @@ int counting_bloom_add(counting_bloom_t *bloom, const char *s)
     for (i = 0; i < bloom->nfuncs; i++) {
         offset = i * bloom->counts_per_func;
         index = hashes[i] + offset;
-        bitmap_increment(bloom->bitmap, index, bloom->offset);
+        bitmap_increment(bloom->parent_bitmap, index, bloom->offset);
     }
     (*bloom->header->count)++;
     
@@ -269,7 +324,7 @@ int counting_bloom_remove(counting_bloom_t *bloom, const char *s)
     for (i = 0; i < bloom->nfuncs; i++) {
         offset = i * bloom->counts_per_func;
         index = hashes[i] + offset;
-        bitmap_decrement(bloom->bitmap, index, bloom->offset);
+        bitmap_decrement(bloom->parent_bitmap, index, bloom->offset);
     }
     (*bloom->header->count)--;
     
@@ -286,76 +341,51 @@ int counting_bloom_check(counting_bloom_t *bloom, const char *s)
     for (i = 0; i < bloom->nfuncs; i++) {
         offset = i * bloom->counts_per_func;
         index = hashes[i] + offset;
-        if (!(bitmap_check(bloom->bitmap, index, bloom->offset))) {
+        if (!(bitmap_check(bloom->parent_bitmap, index, bloom->offset))) {
             return 0;
         }
     }
     return 1;
 }
 
-int scaling_bloom_destroy(scaling_bloom_t *bloom)
+int free_scaling_bloom(scaling_bloom_t *bloom)
 {
     int i;
     for (i = bloom->num_blooms - 1; i >= 0; i--) {
-        counting_bloom_destroy(*(bloom->blooms + i));
+        free_counting_bloom(*(bloom->blooms + i));
     }
     free(bloom->blooms);
     free(bloom->header);
-    bitmap_destroy(bloom->bitmap);
+    free_bitmap(bloom->bitmap);
     free(bloom);
     return 0;
 }
 
-/* creates a new counting bloom filter from a given scaling bloom filter, with count and a fromfile flag */
-counting_bloom_t *bloom_from_scale(scaling_bloom_t *bloom, uint32_t id, unsigned int count, int fromfile)
+/* creates a new counting bloom filter from a given scaling bloom filter, with count and id */
+counting_bloom_t *new_counting_bloom_from_scale(scaling_bloom_t *bloom, uint32_t id, unsigned int count)
 {
     int i, offset;
     double error_rate;
-    size_t old_size, new_size;
     counting_bloom_t *cur_bloom;
     
     error_rate = bloom->error_rate * (pow(.9, bloom->num_blooms + 1));
-    old_size = bloom->num_bytes;
     
-    if (bloom->num_blooms) {
-        if ((bloom->blooms = realloc(bloom->blooms, (bloom->num_blooms + 1) * sizeof(counting_bloom_t *))) == NULL) {
-            fprintf(stderr, "Error, could not realloc a new bloom filter\n");
-            return NULL;
-        }
-    } else {
-        if ((bloom->blooms = malloc(sizeof(counting_bloom_t *))) == NULL) {
-            fprintf(stderr, "Error, Could not malloc a new bloom filter\n");
-            return NULL;
-        }
-    }
-    
-    if ((cur_bloom = malloc(sizeof(counting_bloom_t))) == NULL) {
+    if ((bloom->blooms = realloc(bloom->blooms, (bloom->num_blooms + 1) * sizeof(counting_bloom_t *))) == NULL) {
         fprintf(stderr, "Error, could not realloc a new bloom filter\n");
         return NULL;
     }
-    if ((cur_bloom->header = malloc(sizeof(counting_bloom_header_t))) == NULL) {
-        fprintf(stderr, "Error, could not malloc size for pointers of headers\n");
-        return NULL;
-    }
     
+    cur_bloom = counting_bloom_init(bloom->capacity, error_rate, bloom->num_bytes, id, 0);
     bloom->blooms[bloom->num_blooms] = cur_bloom;
-    bloom_setup(cur_bloom, bloom->capacity, error_rate, old_size, id, 0);
     
-    new_size = bloom->num_bytes + cur_bloom->num_bytes;
-    if (! fromfile) {
-        if (bloom->num_blooms) {
-            bloom->bitmap = bitmap_resize(bloom->bitmap, old_size, new_size, fromfile);
-        } else {
-            bloom->bitmap = bitmap_create(bloom->fd, new_size, fromfile);
-        }
-    }
-    bloom->num_blooms++;
+    bloom->bitmap = bitmap_resize(bloom->bitmap, bloom->num_bytes, bloom->num_bytes + cur_bloom->num_bytes);
     
     /* Set these values, as mmap may have moved */
     bloom->header->preseq = (uint64_t *)(bloom->bitmap->array);
     bloom->header->posseq = (uint64_t *)(bloom->bitmap->array + sizeof(uint64_t));
     
-    /* Set the pointers for these header structs to the right location  since mmap may have moved */
+    /* Set the pointers for these header structs to the right location since mmap may have moved */
+    bloom->num_blooms++;
     for (i = 0; i < bloom->num_blooms; i++) {
         offset = bloom->blooms[i]->offset - HEADER_BYTES;
         bloom->blooms[i]->header->id    = (uint32_t *)(bloom->bitmap->array + offset);
@@ -366,47 +396,12 @@ counting_bloom_t *bloom_from_scale(scaling_bloom_t *bloom, uint32_t id, unsigned
     *cur_bloom->header->count = count;
     *cur_bloom->header->id = id;
     
-    bloom->num_bytes = new_size;
-    cur_bloom->bitmap = bloom->bitmap;
+    bloom->num_bytes += cur_bloom->num_bytes;
+    cur_bloom->parent_bitmap = bloom->bitmap;
     
     return cur_bloom;
 }
 
-scaling_bloom_t *scaling_bloom_create(unsigned int capacity, double error_rate, const char *filename, uint32_t id)
-{
-
-    scaling_bloom_t *bloom;
-    counting_bloom_t *cur_bloom;
-    int fd;
-    
-    if ((bloom = malloc(sizeof(scaling_bloom_t))) == NULL) {
-        return NULL;
-    }
-    
-    if ((bloom->header = malloc(sizeof(scaling_bloom_header_t))) == NULL) {
-        fprintf(stderr, "Error Maoolc for scaling bloom  header failed\n");
-        return NULL;
-    }
-    
-    if ((fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600)) < 0) {
-        perror("Opening File Failed");
-        fprintf(stderr, " %s \n", filename);
-        return NULL;
-    }
-    
-    bloom->fd = fd;
-    bloom->capacity = capacity;
-    bloom->error_rate = error_rate;
-    bloom->num_blooms = 0;
-    bloom->num_bytes = SCALE_HEADER_BYTES;
-    
-    if (!(cur_bloom = bloom_from_scale(bloom, id, 0, 0))) {
-        fprintf(stderr, "ERROR, Could not create counting bloom\n");
-        scaling_bloom_destroy(bloom);
-        return NULL;
-    }
-    return bloom;
-}
 
 int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, uint32_t id)
 {
@@ -426,7 +421,7 @@ int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, uint32_t id)
                      * we won't create a new bloom filter
                      */
                     if (!(id_diff == 0)) {
-                        cur_bloom = bloom_from_scale(bloom, id, 0, 0);
+                        cur_bloom = new_counting_bloom_from_scale(bloom, id, 0);
                     }
                 }
             }
@@ -476,8 +471,58 @@ int scaling_bloom_flush(scaling_bloom_t *bloom)
     return 1;
 }
 
+scaling_bloom_t *scaling_bloom_init(unsigned int capacity, double error_rate, const char *filename, int fd)
+{
+    scaling_bloom_t *bloom;
+    
+    if ((bloom = malloc(sizeof(scaling_bloom_t))) == NULL) {
+        return NULL;
+    }
+    if ((bloom->header = malloc(sizeof(scaling_bloom_header_t))) == NULL) {
+        fprintf(stderr, "Error Maoolc for scaling bloom  header failed\n");
+        return NULL;
+    }
+    if ((bloom->bitmap = new_bitmap(fd, SCALE_HEADER_BYTES)) == NULL) {
+        fprintf(stderr, "ERROR: Could not create bitmap with file\n");
+        free_scaling_bloom(bloom);
+        return NULL;
+    }
+    
+    bloom->capacity = capacity;
+    bloom->error_rate = error_rate;
+    bloom->num_blooms = 0;
+    bloom->num_bytes = SCALE_HEADER_BYTES;
+    bloom->fd = fd;
+    bloom->blooms = NULL;
+    
+    return bloom;
+}
 
-scaling_bloom_t *scaling_bloom_from_file(unsigned int capacity, double error_rate, const char *filename)
+scaling_bloom_t *new_scaling_bloom(unsigned int capacity, double error_rate, const char *filename, uint32_t id)
+{
+
+    scaling_bloom_t *bloom;
+    counting_bloom_t *cur_bloom;
+    int fd;
+    
+    if ((fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600)) < 0) {
+        perror("Opening File Failed");
+        fprintf(stderr, " %s \n", filename);
+        return NULL;
+    }
+    
+    bloom = scaling_bloom_init(capacity, error_rate, filename, fd);
+    
+    if (!(cur_bloom = new_counting_bloom_from_scale(bloom, id, 0))) {
+        fprintf(stderr, "ERROR, Could not create counting bloom\n");
+        free_scaling_bloom(bloom);
+        return NULL;
+    }
+    
+    return bloom;
+}
+
+scaling_bloom_t *new_scaling_bloom_from_file(unsigned int capacity, double error_rate, const char *filename)
 {
     int fd;
     off_t size;
@@ -487,23 +532,9 @@ scaling_bloom_t *scaling_bloom_from_file(unsigned int capacity, double error_rat
     scaling_bloom_t *bloom;
     counting_bloom_t *cur_bloom;
     
-    if ((bloom = malloc(sizeof(scaling_bloom_t))) == NULL) {
-        return NULL;
-    }
-    
-    bloom->capacity = capacity;
-    bloom->error_rate = error_rate;
-    bloom->num_blooms = 0;
-    bloom->num_bytes = SCALE_HEADER_BYTES;
-    
     if ((fd = open(filename, O_RDWR, (mode_t)0600)) < 0) {
         fprintf(stderr, "ERROR: Could not open file %s with open: \n", filename);
         perror("");
-        scaling_bloom_destroy(bloom);
-        return NULL;
-    }
-    if ((bloom->header = malloc(sizeof(scaling_bloom_header_t))) == NULL) {
-        fprintf(stderr, "Error, Malloc failed for scaling_bloom_header_t\n");
         return NULL;
     }
     if ((size = lseek(fd, 0, SEEK_END)) < 0) {
@@ -514,11 +545,8 @@ scaling_bloom_t *scaling_bloom_from_file(unsigned int capacity, double error_rat
     if (size == 0) {
         fprintf(stderr, "ERROR: File size zero\n");
     }
-    if ((bloom->bitmap = bitmap_create(fd, size, 1)) == NULL) {
-        fprintf(stderr, "ERROR: Could not create bitmap with file\n");
-        scaling_bloom_destroy(bloom);
-        return NULL;
-    }
+    
+    bloom = scaling_bloom_init(capacity, error_rate, filename, fd);
     
     bloom->header->preseq = (uint64_t *)(bloom->bitmap->array);
     bloom->header->posseq = (uint64_t *)(bloom->bitmap->array + sizeof(uint64_t));
@@ -529,15 +557,15 @@ scaling_bloom_t *scaling_bloom_from_file(unsigned int capacity, double error_rat
     }
     
     offset = SCALE_HEADER_BYTES;
-    size -= offset + 1;
+    size -= offset;
     while (size) {
         id    = *(uint32_t *)(bloom->bitmap->array + offset);
         count = *(uint32_t *)(bloom->bitmap->array + offset + sizeof(uint32_t));
-        cur_bloom = bloom_from_scale(bloom, id, count, 1);
+        cur_bloom = new_counting_bloom_from_scale(bloom, id, count);
         size -= cur_bloom->num_bytes;
         offset += cur_bloom->num_bytes;
         if (size < 0) {
-            scaling_bloom_destroy(bloom);
+            free_scaling_bloom(bloom);
             fprintf(stderr, "ERROR: Actual filesize and expected filesize are not equal\n");
             return NULL;
         }
