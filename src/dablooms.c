@@ -1,6 +1,7 @@
 /* Copyright @2012 by Justin Hines at Bitly under a very liberal license. See LICENSE in the source distribution. */
 
 #define _GNU_SOURCE
+#include <sys/stat.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -31,6 +32,7 @@ bitmap_t *bitmap_resize(bitmap_t *bitmap, size_t old_size, size_t new_size)
 {
     int fd = bitmap->fd;
     struct stat fileStat;
+		char *temp;
     
     fstat(fd, &fileStat);
     size_t size = fileStat.st_size;
@@ -54,23 +56,19 @@ bitmap_t *bitmap_resize(bitmap_t *bitmap, size_t old_size, size_t new_size)
     }
     lseek(fd, 0, SEEK_SET);
     
-    /* New mmap if it doesn't exist, else resize */
-    if ((bitmap->array) == NULL) {
-        if ((bitmap->array = mmap(0, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED) {
-            perror("Error init mmap");
-            free_bitmap(bitmap);
-            close(fd);
-            return NULL;
-        }
-    } else {
-        if ((bitmap->array = mremap(bitmap->array, old_size, new_size, MREMAP_MAYMOVE)) == MAP_FAILED) {
-            perror("Error resizing mmap");
-            free_bitmap(bitmap);
-            close(fd);
-            return NULL;
-        }
+		temp = bitmap->array;
+    if ((bitmap->array = mmap(0, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED) {
+				perror("Error init mmap");
+        free_bitmap(bitmap);
+        close(fd);
+				return NULL;
     }
-    
+    if ((munmap(temp, bitmap->bytes)) < 0) {
+        perror("Error unmapping memory");
+	      free_bitmap(bitmap);
+        close(fd);
+        return NULL;
+    }
     bitmap->bytes = new_size;
     return bitmap;
 }
@@ -550,11 +548,6 @@ scaling_bloom_t *new_scaling_bloom_from_file(unsigned int capacity, double error
     
     bloom->header->preseq = (uint64_t *)(bloom->bitmap->array);
     bloom->header->posseq = (uint64_t *)(bloom->bitmap->array + sizeof(uint64_t));
-    if (*bloom->header->preseq != *bloom->header->posseq) {
-        fprintf(stderr, "ERROR: File corrupt, seq nums not equal %li %li\n",
-                *bloom->header->preseq, *bloom->header->posseq);
-        return NULL;
-    }
     
     offset = SCALE_HEADER_BYTES;
     size -= offset;

@@ -4,9 +4,9 @@ import sys, string
 from_dir = sys.argv[0][0:string.find(sys.argv[0], 'setup.py')]
 
 module1 = Extension('pydablooms', 
-                    include_dirs = ['/usr/local/include'],
+                    include_dirs = [from_dir + '../src/.', '/usr/local/include'],
                     libraries= ['dablooms'],
-                    library_dirs = ['/usr/local/lib'],
+                    library_dirs = [from_dir + '../build/.', '/usr/local/lib'],
                     sources = [from_dir + 'pydablooms.c'])
 
 setup (name = 'pydablooms',
