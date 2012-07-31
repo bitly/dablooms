@@ -21,7 +21,7 @@ PY_BLDDIR = $(BLDDIR)/python
 
 SRCS_LIBDABLOOMS = md5.c dablooms.c
 SRCS_TESTS = test_dablooms.c
-
+WORDS =
 OBJS_LIBDABLOOMS = $(patsubst %.c, $(BLDDIR)/%.o, $(SRCS_LIBDABLOOMS))
 OBJS_TESTS = $(patsubst %.c, $(BLDDIR)/%.o, $(SRCS_TESTS))
 
@@ -48,19 +48,19 @@ $(DESTDIR)$(INCDIR)/dablooms.h: $(SRCDIR)/dablooms.h
 $(DESTDIR)$(PY_MOD_DIR)/pydablooms.so: $(PY_BLDDIR)/pydablooms.so
 	@echo " PY_INSTALL " $@
 	@$(INSTALL) -d $(dir $@)
-	@$(INSTALL) -D $< $@
+	@$(INSTALL) -C $< $@
 
 $(DESTDIR)$(PREFIX)/%:
 	@echo " INSTALL " $@
 	@$(INSTALL) -d $(dir $@)
-	@$(INSTALL) -D $< $@
+	@$(INSTALL) -C $< $@
 
 $(BLDDIR)/test_dablooms: $(OBJS_TESTS) $(BLDDIR)/libdablooms.a 
 	@echo " LD " $@
 	@$(CC) -o $@ $(OBJS_TESTS) -L$(BLDDIR) $(LDFLAGS) -l dablooms $(LDLIBS)
 
 test: $(BLDDIR)/test_dablooms
-	$(BLDDIR)/test_dablooms
+	$(BLDDIR)/test_dablooms $(WORDS)
 
 $(PY_BLDDIR)/pydablooms.so: $(BLDDIR)/libdablooms.a
 	@echo " PY_BUILD" $@

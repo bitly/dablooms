@@ -44,8 +44,7 @@ Also included is a wrapper to easily leverage the library in Python.
     >>> bloom = pydablooms.Dablooms(capacity=1000,
     ...                            error_rate=.05,
     ...                            filepath='/tmp/bloom.bin',
-    ...                            id=1,
-    ...                            fromfile=0)
+    ...                            id=1)
     >>> bloom.add('foo', 2)
     1
     >>> bloom.check('bar')
@@ -54,16 +53,17 @@ Also included is a wrapper to easily leverage the library in Python.
     0
     >>> bloom.check('foo')
     0
-    >>>
 
 ### Installing
-After you have cloned the repo, type `make install` (`sudo` maybe needed).
+After you have cloned the repo, type `make`, `make install` (`sudo` maybe needed).
 
 To use a specific version of Python, build directory, or destination 
 directory, use the `PYTHON`, `BLDDIR`, and `DESTDIR`, respectively. 
 
 ### Testing
-To run a quick and dirty test, type `make test`.
+To run a quick and dirty test, type `make test`.  This test files uses `dict\words`
+and defaults to `/usr/share/dict/words`. If your path differs, you can use the
+`WORDS` flag to specific its location, such as `make test WORDS=/usr/dict/words`.
 
 This will run a simple test script that iterates through a word
 dictionary and adds each word to dablooms. It iterates again, removing every fifth

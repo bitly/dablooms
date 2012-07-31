@@ -23,7 +23,7 @@ void chomp_line(char *word)
     }
 }
 
-int test_scale()
+int test_scale(const char * filepath)
 {
     FILE *fp, *file;
     char word[128];
@@ -42,7 +42,7 @@ int test_scale()
         return EXIT_FAILURE;
     }
     
-    if (!(fp = fopen("/usr/share/dict/words", "r"))) {
+    if (!(fp = fopen(filepath, "r"))) {
         fprintf(stderr, "ERROR: Could not open words file");
         return EXIT_FAILURE;
     }
@@ -108,9 +108,14 @@ int test_scale()
 int main(int argc, char *argv[])
 {
     /*test_bitmap(); */
-    test_scale();
+    const char *filepath; 
+    if (argc > 2) {  
+        filepath = argv[1]; 
+    } else {
+        filepath = "/usr/share/dict/words";
+    } 
+    test_scale(filepath);
     
     fprintf(stderr, "\n");
-    
     return EXIT_SUCCESS;
 }
