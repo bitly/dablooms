@@ -40,7 +40,7 @@ DESTDIR =
 SRCDIR = src
 BLDDIR = build
 
-LDFLAGS = -g 
+LDFLAGS = -g
 LDLIBS = -lm
 CFLAGS = -g -Wall -fPIC
 
@@ -63,7 +63,7 @@ OBJS_TESTS = $(patsubst %.c, $(BLDDIR)/%.o, $(SRCS_TESTS))
 all:  libdablooms pydablooms $(BLDDIR)/test_dablooms
 
 # sort removes duplicates
-DEPS := $(sort $(patsubst %.o, %.o.deps, $(OBJS_LIBDABLOOMS) $(OBJS_TESTS))) 
+DEPS := $(sort $(patsubst %.o, %.o.deps, $(OBJS_LIBDABLOOMS) $(OBJS_TESTS)))
 -include $(DEPS)
 
 install: install_libdablooms install_pydablooms
@@ -90,7 +90,7 @@ $(DESTDIR)$(PREFIX)/%:
 	@$(INSTALL) -d $(dir $@)
 	@$(INSTALL) -C $< $@
 
-$(BLDDIR)/test_dablooms: $(OBJS_TESTS) $(BLDDIR)/libdablooms.a 
+$(BLDDIR)/test_dablooms: $(OBJS_TESTS) $(BLDDIR)/libdablooms.a
 	@echo " LD " $@
 	@$(CC) -o $@ $(OBJS_TESTS) -L$(BLDDIR) $(LDFLAGS) -l dablooms $(LDLIBS)
 
