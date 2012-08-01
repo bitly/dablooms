@@ -15,7 +15,7 @@ CC = gcc
 AR = ar
 
 PY_SRCDIR = pydablooms
-PY_MOD_DIR := $(shell $(PYTHON) -c "import distutils.sysconfig ; print distutils.sysconfig.get_python_lib()")
+PY_MOD_DIR := $(shell $(PYTHON) -c "import distutils.sysconfig ; print(distutils.sysconfig.get_python_lib())")
 PY_FLAGS = --build-lib=$(PY_BLDDIR) --build-temp=$(PY_BLDDIR)
 PY_BLDDIR = $(BLDDIR)/python
 
