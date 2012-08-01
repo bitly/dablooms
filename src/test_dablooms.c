@@ -109,13 +109,11 @@ int main(int argc, char *argv[])
 {
     /*test_bitmap(); */
     const char *filepath; 
-    if (argc > 2) {  
-        filepath = argv[1]; 
-    } else {
-        filepath = "/usr/share/dict/words";
+    if (argc != 2) {  
+        fprintf(stderr, "Usage: %s <words_file>\n", argv[0]);
+        return EXIT_FAILURE;
     } 
+    filepath = argv[1]; 
     test_scale(filepath);
-    
-    fprintf(stderr, "\n");
     return EXIT_SUCCESS;
 }

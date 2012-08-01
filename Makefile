@@ -56,7 +56,7 @@ PY_BLDDIR = $(BLDDIR)/python
 
 SRCS_LIBDABLOOMS = md5.c dablooms.c
 SRCS_TESTS = test_dablooms.c
-WORDS =
+WORDS = /usr/share/dict/words
 OBJS_LIBDABLOOMS = $(patsubst %.c, $(BLDDIR)/%.o, $(SRCS_LIBDABLOOMS))
 OBJS_TESTS = $(patsubst %.c, $(BLDDIR)/%.o, $(SRCS_TESTS))
 
