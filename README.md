@@ -59,6 +59,7 @@ After you have cloned the repo, type `make`, `make install` (`sudo` maybe needed
 
 To use a specific version of Python, build directory, or destination 
 directory, use the `PYTHON`, `BLDDIR`, and `DESTDIR`, respectively. 
+Look at the output of `make help` for more options.
 
 An example build might be `make install PYTHON=python2.7 BLDDIR=/tmp/dablooms/bld DESTDIR=/tmp/dablooms/pkg`
 
