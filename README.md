@@ -60,6 +60,8 @@ After you have cloned the repo, type `make`, `make install` (`sudo` maybe needed
 To use a specific version of Python, build directory, or destination 
 directory, use the `PYTHON`, `BLDDIR`, and `DESTDIR`, respectively. 
 
+An example build might be `make install PYTHON=python2.7 BLDDIR=/tmp/dablooms/bld DESTDIR=/tmp/dablooms/pkg`
+
 ### Testing
 To run a quick and dirty test, type `make test`.  This test files uses `dict\words`
 and defaults to `/usr/share/dict/words`. If your path differs, you can use the
