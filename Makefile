@@ -1,3 +1,38 @@
+HELPTEXT = "\
+\n dablooms Makefile usage       \
+\n                               \
+\n  Options (current value)      \
+\n                               \
+\n    BLDDIR     ($(BLDDIR))     \
+\n    DESTDIR    ($(DESTDIR))    \
+\n    PREFIX     ($(PREFIX))     \
+\n    LIBDIR     ($(LIBDIR))     \
+\n    INCDIR     ($(INCDIR))     \
+\n                               \
+\n    CC         ($(CC))         \
+\n    CFLAGS     ($(CFLAGS))     \
+\n    LDFLAGS    ($(LDFLAGS))    \
+\n    INSTALL    ($(INSTALL))    \
+\n                               \
+\n    PYTHON     ($(PYTHON))     \
+\n    PY_MOD_DIR ($(PY_MOD_DIR)) \
+\n                               \
+\n  Targets                      \
+\n                               \
+\n    all                        \
+\n    libdablooms                \
+\n    pydablooms                 \
+\n                               \
+\n    install                    \
+\n    install_libdablooms        \
+\n    install_pydablooms         \
+\n                               \
+\n    clean                      \
+\n    test                       \
+\n    help                       \
+\n\n                             \
+"
+
 PREFIX = /usr/local
 LIBDIR = $(PREFIX)/lib
 INCDIR = $(PREFIX)/include
@@ -81,4 +116,6 @@ clean:
 	rm -f $(OBJS_LIBDABLOOMS) $(BLDDIR)/libdablooms.a $(OBJS_TESTS) $(BLDDIR)/test_dablooms $(DEPS) $(BLDDIR)/pydablooms.so
 	rmdir $(BLDDIR)
 
-.PHONY: all clean install test install_libdablooms install_pydablooms libdablooms pydablooms
+help:
+	@printf $(HELPTEXT)
+.PHONY: all clean help install test install_libdablooms install_pydablooms libdablooms pydablooms
