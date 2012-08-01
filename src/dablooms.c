@@ -32,7 +32,6 @@ bitmap_t *bitmap_resize(bitmap_t *bitmap, size_t old_size, size_t new_size)
 {
     int fd = bitmap->fd;
     struct stat fileStat;
-		char *temp;
     
     fstat(fd, &fileStat);
     size_t size = fileStat.st_size;
@@ -56,19 +55,36 @@ bitmap_t *bitmap_resize(bitmap_t *bitmap, size_t old_size, size_t new_size)
     }
     lseek(fd, 0, SEEK_SET);
     
-		temp = bitmap->array;
-    if ((bitmap->array = mmap(0, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED) {
-				perror("Error init mmap");
-        free_bitmap(bitmap);
-        close(fd);
-				return NULL;
+    /* resize if mmap exists and possible on this os, else new mmap */
+    if (bitmap->array != NULL) {
+#if __linux
+        bitmap->array = mremap(bitmap->array, old_size, new_size, MREMAP_MAYMOVE);
+        if (bitmap->array == MAP_FAILED) {
+            perror("Error resizing mmap");
+            free_bitmap(bitmap);
+            close(fd);
+            return NULL;
+        }
+#else
+        if (munmap(bitmap->array, bitmap->bytes) < 0) {
+            perror("Error unmapping memory");
+            free_bitmap(bitmap);
+            close(fd);
+            return NULL;
+        }
+        bitmap->array = NULL;
+#endif
     }
-    if ((munmap(temp, bitmap->bytes)) < 0) {
-        perror("Error unmapping memory");
-	      free_bitmap(bitmap);
-        close(fd);
-        return NULL;
+    if (bitmap->array == NULL) {
+        bitmap->array = mmap(0, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        if (bitmap->array == MAP_FAILED) {
+            perror("Error init mmap");
+            free_bitmap(bitmap);
+            close(fd);
+            return NULL;
+        }
     }
+    
     bitmap->bytes = new_size;
     return bitmap;
 }
