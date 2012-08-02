@@ -54,7 +54,6 @@ static PyObject *check(Dablooms *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "s", &hash)) {
         return NULL;
     }
-    
     return Py_BuildValue("i", scaling_bloom_check(self->filter, hash));
 }
 
@@ -68,8 +67,8 @@ static PyObject *add(Dablooms *self, PyObject *args, PyObject *kwds)
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "|si", kwlist, &hash, &id)) {
         return NULL;
     }
-		
-		return Py_BuildValue("i", scaling_bloom_add(self->filter, hash, id));
+    
+    return Py_BuildValue("i", scaling_bloom_add(self->filter, hash, id));
 }
 
 static PyObject *delete(Dablooms *self, PyObject *args, PyObject *kwds)
@@ -117,7 +116,7 @@ static PyMemberDef Dablooms_members[] = {
 static PyTypeObject DabloomsType = {
     PyObject_HEAD_INIT(NULL)
     0,                              /*ob_size*/
-    "pydablooms.Dablooms",            /*tp_name*/
+    "pydablooms.Dablooms",          /*tp_name*/
     sizeof(Dablooms),               /*tp_basicsize*/
     0,                              /*tp_itemsize*/
     (destructor)Dablooms_dealloc,   /*tp_dealloc*/
@@ -129,31 +128,31 @@ static PyTypeObject DabloomsType = {
     0,                              /*tp_as_number*/
     0,                              /*tp_as_sequence*/
     0,                              /*tp_as_mapping*/
-    0,                              /*tp_hash */
+    0,                              /*tp_hash*/
     0,                              /*tp_call*/
     0,                              /*tp_str*/
     0,                              /*tp_getattro*/
     0,                              /*tp_setattro*/
     0,                              /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT,             /*tp_flags*/
-    "Dablooms objects",             /* tp_doc */
-    0,                              /* tp_traverse */
-    0,                              /* tp_clear */
-    0,                              /* tp_richcompare */
-    0,                              /* tp_weaklistoffset */
-    0,                              /* tp_iter */
-    0,                              /* tp_iternext */
-    Dablooms_methods,               /* tp_methods */
-    Dablooms_members,               /* tp_members */
-    0,                              /* tp_getset */
-    0,                              /* tp_base */
-    0,                              /* tp_dict */
-    0,                              /* tp_descr_get */
-    0,                              /* tp_descr_set */
-    0,                              /* tp_dictoffset */
-    (initproc)Dablooms_init,        /* tp_init */
-    0,                              /* tp_alloc */
-    Dablooms_new,                   /* tp_new */
+    "Dablooms objects",             /*tp_doc*/
+    0,                              /*tp_traverse*/
+    0,                              /*tp_clear*/
+    0,                              /*tp_richcompare*/
+    0,                              /*tp_weaklistoffset*/
+    0,                              /*tp_iter*/
+    0,                              /*tp_iternext*/
+    Dablooms_methods,               /*tp_methods*/
+    Dablooms_members,               /*tp_members*/
+    0,                              /*tp_getset*/
+    0,                              /*tp_base*/
+    0,                              /*tp_dict*/
+    0,                              /*tp_descr_get*/
+    0,                              /*tp_descr_set*/
+    0,                              /*tp_dictoffset*/
+    (initproc)Dablooms_init,        /*tp_init*/
+    0,                              /*tp_alloc*/
+    Dablooms_new,                   /*tp_new*/
 };
 
 static PyObject *load_dabloom(PyTypeObject *type, PyObject *args, PyObject *kwds)
