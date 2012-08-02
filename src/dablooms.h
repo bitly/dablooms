@@ -57,6 +57,7 @@ int counting_bloom_check(counting_bloom_t *bloom, const char *s);
 typedef struct {
     uint64_t *preseq;
     uint64_t *posseq;
+    uint64_t *max_id;
 } scaling_bloom_header_t;
 
 typedef struct {
