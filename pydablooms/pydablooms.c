@@ -2,7 +2,7 @@
 #include "dablooms.h"
 #include "structmember.h"
 
-#define PYBLOOMS_VERSION 0.5
+#define PYDABLOOMS_VERSION "0.6"
 
 int Py_ModuleVersion = 1;
 
