@@ -18,7 +18,7 @@
 #define DABLOOMS_VERSION "0.8"
 
 #define HEADER_BYTES (2*sizeof(uint32_t))
-#define SCALE_HEADER_BYTES (2*sizeof(uint64_t))
+#define SCALE_HEADER_BYTES (3*sizeof(uint64_t))
 #define SALT_SIZE 16
 
 const char *dablooms_version(void)
@@ -404,6 +404,7 @@ counting_bloom_t *new_counting_bloom_from_scale(scaling_bloom_t *bloom, uint32_t
     /* Set these values, as mmap may have moved */
     bloom->header->preseq = (uint64_t *)(bloom->bitmap->array);
     bloom->header->posseq = (uint64_t *)(bloom->bitmap->array + sizeof(uint64_t));
+    bloom->header->max_id = (uint64_t *)(bloom->bitmap->array + 2 * sizeof(uint64_t));
     
     /* Set the pointers for these header structs to the right location since mmap may have moved */
     bloom->num_blooms++;
@@ -426,32 +427,27 @@ counting_bloom_t *new_counting_bloom_from_scale(scaling_bloom_t *bloom, uint32_t
 
 int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, uint32_t id)
 {
+    int i;
     int nblooms = bloom->num_blooms;
-    int i, id_diff;
     counting_bloom_t *cur_bloom;
-    
     for (i = nblooms - 1; i >= 0; i--) {
         cur_bloom = bloom->blooms[i];
-        id_diff = id - (*cur_bloom->header->id);
-        if (id_diff) {
-            /* If we're the top, ltes check to see if we need to add another filter */
-            if (i == (nblooms - 1)) {
-                if ((*(cur_bloom->header->count)) >= cur_bloom->capacity - 1) {
-                    /* We don't want to add the element, even IF we need to make a new
-                     * bloom to the wrong filter, so if there is no diff in id,
-                     * we won't create a new bloom filter
-                     */
-                    if (!(id_diff == 0)) {
-                        cur_bloom = new_counting_bloom_from_scale(bloom, id, 0);
-                    }
-                }
-            }
+        if (id >= *cur_bloom->header->id) {
             break;
         }
     }
     (*bloom->header->preseq) ++;
+    
+    if ((id > *bloom->header->max_id) && ((*(cur_bloom->header->count)) >= cur_bloom->capacity - 1)) {
+        cur_bloom = new_counting_bloom_from_scale(bloom, (*bloom->header->max_id) + 1, 0);
+    }
+    if ((*bloom->header->max_id) < id) {
+        (*bloom->header->max_id) = id;
+    }
     counting_bloom_add(cur_bloom, s);
+    
     (*bloom->header->posseq) ++;
+    
     return 1;
 }
 
@@ -570,6 +566,7 @@ scaling_bloom_t *new_scaling_bloom_from_file(unsigned int capacity, double error
     
     bloom->header->preseq = (uint64_t *)(bloom->bitmap->array);
     bloom->header->posseq = (uint64_t *)(bloom->bitmap->array + sizeof(uint64_t));
+    bloom->header->max_id = (uint64_t *)(bloom->bitmap->array + 2 * sizeof(uint64_t));
     
     offset = SCALE_HEADER_BYTES;
     size -= offset;
