@@ -1,16 +1,30 @@
 from distutils.core import setup, Extension
-import sys, string
+import os, sys, string
 
-from_dir = sys.argv[0][0:string.find(sys.argv[0], 'setup.py')]
+def local_path(path):
+    local_dir = os.path.dirname(__file__)
+    return os.path.normpath(os.path.join(local_dir, path))
+
+def parse_version_from_c():
+    cfile = open(local_path('pydablooms.c'))
+    result = ''
+    for line in cfile:
+        parts = line.split()
+        if len(parts) == 3 and parts[:2] == ['#define', 'PYDABLOOMS_VERSION']:
+            result = parts[2].strip('"')
+            break
+    cfile.close()
+    return result
 
 module1 = Extension('pydablooms', 
-                    include_dirs = [from_dir + '../src/.', '/usr/local/include'],
-                    libraries= ['dablooms'],
-                    library_dirs = [from_dir + '../build/.', '/usr/local/lib'],
-                    sources = [from_dir + 'pydablooms.c'])
+                    include_dirs = [local_path('../src')],
+                    libraries = ['dablooms'],
+                    library_dirs = [local_path('../build')],
+                    sources = [local_path('pydablooms.c')],
+                   )
 
 setup (name = 'pydablooms',
-    version = '0.6',
+    version = parse_version_from_c(),
     description = 'This is a a python extension of the scaling, counting, bloom filter, dablooms.',
     author = 'Justin P. Hines',
     author_email = 'justinhines@bit.ly',
