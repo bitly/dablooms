@@ -195,6 +195,8 @@ PyMODINIT_FUNC initpydablooms(void)
         return;
     }
     
+    PyModule_AddObject(m, "__version__", PyString_FromString(PYDABLOOMS_VERSION));
+    
     Py_INCREF(&DabloomsType);
     PyModule_AddObject(m, "Dablooms", (PyObject *)&DabloomsType);
 }
