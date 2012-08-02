@@ -286,15 +286,15 @@ counting_bloom_t *counting_bloom_init(unsigned int capacity, double error_rate,
 
 counting_bloom_t *new_counting_bloom(unsigned int capacity, double error_rate, const char *filename)
 {
-    counting_bloom_t *cur_bloom; 
-    int fd; 
+    counting_bloom_t *cur_bloom;
+    int fd;
     
     if ((fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600)) < 0) {
         perror("Error, Opening File Failed");
         fprintf(stderr, " %s \n", filename);
         return NULL;
     }
-
+    
     cur_bloom = counting_bloom_init(capacity, error_rate, 0, 0, 0);
     cur_bloom->parent_bitmap = new_bitmap(fd, cur_bloom->num_bytes);
     
@@ -303,15 +303,15 @@ counting_bloom_t *new_counting_bloom(unsigned int capacity, double error_rate, c
 
 counting_bloom_t *counting_bloom_from_file(unsigned capacity, double error_rate, const char *filename)
 {
-    counting_bloom_t *cur_bloom; 
-    int fd; 
+    counting_bloom_t *cur_bloom;
+    int fd;
     
     if ((fd = open(filename, O_RDWR, (mode_t)0600)) < 0) {
         perror("Error, Opening File Failed");
         fprintf(stderr, " %s \n", filename);
         return NULL;
     }
-
+    
     cur_bloom = counting_bloom_init(capacity, error_rate, 0, 0, 0);
     cur_bloom->parent_bitmap = new_bitmap(fd, cur_bloom->num_bytes);
     

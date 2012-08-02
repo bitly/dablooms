@@ -43,7 +43,6 @@ typedef struct {
     size_t num_bytes;
     double error_rate;
     bitmap_t *parent_bitmap;
-    
 } counting_bloom_t;
 
 int free_counting_bloom(counting_bloom_t *bloom);
