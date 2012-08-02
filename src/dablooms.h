@@ -5,6 +5,8 @@
 #include<stdint.h>
 #include<stdlib.h>
 
+const char *dablooms_version(void);
+
 typedef struct {
     size_t bytes;
     int    fd;

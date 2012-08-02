@@ -107,6 +107,8 @@ int test_scale(const char * filepath)
 
 int main(int argc, char *argv[])
 {
+    printf("dablooms version: %s\n", dablooms_version());
+    
     /*test_bitmap(); */
     const char *filepath; 
     if (argc != 2) {  

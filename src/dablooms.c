@@ -15,9 +15,16 @@
 #include "md5.h"
 #include "dablooms.h"
 
+#define DABLOOMS_VERSION "0.8"
+
 #define HEADER_BYTES (2*sizeof(uint32_t))
 #define SCALE_HEADER_BYTES (2*sizeof(uint64_t))
 #define SALT_SIZE 16
+
+const char *dablooms_version(void)
+{
+    return DABLOOMS_VERSION;
+}
 
 void free_bitmap(bitmap_t *bitmap)
 {
