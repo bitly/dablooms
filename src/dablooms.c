@@ -488,8 +488,7 @@ int scaling_bloom_check(scaling_bloom_t *bloom, const char *s)
 
 int scaling_bloom_flush(scaling_bloom_t *bloom)
 {
-    bitmap_flush(bloom->bitmap);
-    return 1;
+    return bitmap_flush(bloom->bitmap);
 }
 
 scaling_bloom_t *scaling_bloom_init(unsigned int capacity, double error_rate, const char *filename, int fd)
