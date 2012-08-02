@@ -10,7 +10,7 @@ module1 = Extension('pydablooms',
                     sources = [from_dir + 'pydablooms.c'])
 
 setup (name = 'pydablooms',
-    version = '0.5',
+    version = '0.6',
     description = 'This is a a python extension of the scaling, counting, bloom filter, dablooms.',
     author = 'Justin P. Hines',
     author_email = 'justinhines@bit.ly',
