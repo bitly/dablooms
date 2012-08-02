@@ -29,7 +29,7 @@ const char *dablooms_version(void)
 void free_bitmap(bitmap_t *bitmap)
 {
     if ((munmap(bitmap->array, bitmap->bytes)) < 0) {
-        perror("Error unmapping memory");
+        perror("Error, unmapping memory");
     }
     close(bitmap->fd);
     free(bitmap);
@@ -47,14 +47,14 @@ bitmap_t *bitmap_resize(bitmap_t *bitmap, size_t old_size, size_t new_size)
     if (size == old_size) {
         for (; size < new_size; size++) {
             if (lseek(fd, size, SEEK_SET) < 0) {
-                perror("Error calling lseek() to set file size");
+                perror("Error, calling lseek() to set file size");
                 free_bitmap(bitmap);
                 close(fd);
                 return NULL;
             }
         }
         if (write(fd, "", 1) < 0) {
-            perror("Error writing last byte of the file");
+            perror("Error, writing last byte of the file");
             free_bitmap(bitmap);
             close(fd);
             return NULL;
@@ -131,7 +131,7 @@ int bitmap_increment(bitmap_t *bitmap, unsigned int index, unsigned int offset)
     }
     
     if (temp == 0x0f) {
-        fprintf(stderr, "4 bit int Overflow\n");
+        fprintf(stderr, "Error, 4 bit int Overflow\n");
         return -1;
     }
     
@@ -155,7 +155,7 @@ int bitmap_decrement(bitmap_t *bitmap, unsigned int index, unsigned int offset)
     }
     
     if (temp == 0x00) {
-        fprintf(stderr, "Decrementing zero\n");
+        fprintf(stderr, "Error, Decrementing zero\n");
         return -1;
     }
     
@@ -177,7 +177,7 @@ int bitmap_check(bitmap_t *bitmap, unsigned int index, unsigned int offset)
 int bitmap_flush(bitmap_t *bitmap)
 {
     if ((msync(bitmap->array, bitmap->bytes, MS_SYNC) < 0)) {
-        perror("Error flushing bitmap to disk");
+        perror("Error, flushing bitmap to disk");
         return -1;
     } else {
         return 0;
@@ -290,7 +290,7 @@ counting_bloom_t *new_counting_bloom(unsigned int capacity, double error_rate, c
     int fd; 
     
     if ((fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600)) < 0) {
-        perror("Opening File Failed");
+        perror("Error, Opening File Failed");
         fprintf(stderr, " %s \n", filename);
         return NULL;
     }
@@ -307,7 +307,7 @@ counting_bloom_t *counting_bloom_from_file(unsigned capacity, double error_rate,
     int fd; 
     
     if ((fd = open(filename, O_RDWR, (mode_t)0600)) < 0) {
-        perror("Opening File Failed");
+        perror("Error, Opening File Failed");
         fprintf(stderr, " %s \n", filename);
         return NULL;
     }
@@ -500,11 +500,11 @@ scaling_bloom_t *scaling_bloom_init(unsigned int capacity, double error_rate, co
         return NULL;
     }
     if ((bloom->header = malloc(sizeof(scaling_bloom_header_t))) == NULL) {
-        fprintf(stderr, "Error Maoolc for scaling bloom  header failed\n");
+        fprintf(stderr, "Error, Maoolc for scaling bloom  header failed\n");
         return NULL;
     }
     if ((bloom->bitmap = new_bitmap(fd, SCALE_HEADER_BYTES)) == NULL) {
-        fprintf(stderr, "ERROR: Could not create bitmap with file\n");
+        fprintf(stderr, "Error, Could not create bitmap with file\n");
         free_scaling_bloom(bloom);
         return NULL;
     }
@@ -527,7 +527,7 @@ scaling_bloom_t *new_scaling_bloom(unsigned int capacity, double error_rate, con
     int fd;
     
     if ((fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600)) < 0) {
-        perror("Opening File Failed");
+        perror("Error, Opening File Failed");
         fprintf(stderr, " %s \n", filename);
         return NULL;
     }
@@ -535,7 +535,7 @@ scaling_bloom_t *new_scaling_bloom(unsigned int capacity, double error_rate, con
     bloom = scaling_bloom_init(capacity, error_rate, filename, fd);
     
     if (!(cur_bloom = new_counting_bloom_from_scale(bloom, id, 0))) {
-        fprintf(stderr, "ERROR, Could not create counting bloom\n");
+        fprintf(stderr, "Error, Could not create counting bloom\n");
         free_scaling_bloom(bloom);
         return NULL;
     }
@@ -554,17 +554,17 @@ scaling_bloom_t *new_scaling_bloom_from_file(unsigned int capacity, double error
     counting_bloom_t *cur_bloom;
     
     if ((fd = open(filename, O_RDWR, (mode_t)0600)) < 0) {
-        fprintf(stderr, "ERROR: Could not open file %s with open: \n", filename);
+        fprintf(stderr, "Error, Could not open file %s with open: \n", filename);
         perror("");
         return NULL;
     }
     if ((size = lseek(fd, 0, SEEK_END)) < 0) {
-        perror("Error calling lseek() to tell file size");
+        perror("Error, calling lseek() to tell file size");
         close(fd);
         return NULL;
     }
     if (size == 0) {
-        fprintf(stderr, "ERROR: File size zero\n");
+        fprintf(stderr, "Error, File size zero\n");
     }
     
     bloom = scaling_bloom_init(capacity, error_rate, filename, fd);
@@ -582,7 +582,7 @@ scaling_bloom_t *new_scaling_bloom_from_file(unsigned int capacity, double error
         offset += cur_bloom->num_bytes;
         if (size < 0) {
             free_scaling_bloom(bloom);
-            fprintf(stderr, "ERROR: Actual filesize and expected filesize are not equal\n");
+            fprintf(stderr, "Error, Actual filesize and expected filesize are not equal\n");
             return NULL;
         }
     }
