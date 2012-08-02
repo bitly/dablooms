@@ -43,7 +43,7 @@ int test_scale(const char * filepath)
     }
     
     if (!(fp = fopen(filepath, "r"))) {
-        fprintf(stderr, "ERROR: Could not open words file");
+        fprintf(stderr, "ERROR: Could not open words file\n");
         return EXIT_FAILURE;
     }
     
