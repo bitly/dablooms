@@ -11,7 +11,9 @@ HELPTEXT = "\
 \n                               \
 \n    CC         ($(CC))         \
 \n    CFLAGS     ($(CFLAGS))     \
+\n    INCPATH    ($(INCPATH))    \
 \n    LDFLAGS    ($(LDFLAGS))    \
+\n    LIBPATH    ($(LIBPATH))    \
 \n    INSTALL    ($(INSTALL))    \
 \n                               \
 \n    PYTHON     ($(PYTHON))     \
@@ -40,9 +42,11 @@ DESTDIR =
 SRCDIR = src
 BLDDIR = build
 
-LDFLAGS = -g
+INCPATH =
+CFLAGS = -g -Wall -fPIC $(patsubst %, -I%, $(INCPATH))
+LIBPATH =
+LDFLAGS = -g $(patsubst %, -L%, $(LIBPATH))
 LDLIBS = -lm
-CFLAGS = -g -Wall -fPIC
 
 PYTHON = python
 INSTALL = install
@@ -50,9 +54,10 @@ CC = gcc
 AR = ar
 
 PY_SRCDIR = pydablooms
+PY_BLDDIR = $(BLDDIR)/python
 PY_MOD_DIR := $(shell $(PYTHON) -c "import distutils.sysconfig ; print(distutils.sysconfig.get_python_lib())")
 PY_FLAGS = --build-lib=$(PY_BLDDIR) --build-temp=$(PY_BLDDIR)
-PY_BLDDIR = $(BLDDIR)/python
+PY_BLD_ENV = INCPATH="$(SRCDIR) $(INCPATH)" LIBPATH="$(BLDDIR) $(LIBPATH)"
 
 SRCS_LIBDABLOOMS = md5.c dablooms.c
 SRCS_TESTS = test_dablooms.c
@@ -99,7 +104,7 @@ test: $(BLDDIR)/test_dablooms
 
 $(PY_BLDDIR)/pydablooms.so: $(BLDDIR)/libdablooms.a
 	@echo " PY_BUILD" $@
-	@$(PYTHON) $(PY_SRCDIR)/setup.py build $(PY_FLAGS)
+	@$(PY_BLD_ENV) $(PYTHON) $(PY_SRCDIR)/setup.py build $(PY_FLAGS) >/dev/null
 
 $(BLDDIR)/%.o: $(SRCDIR)/%.c
 	@echo " CC " $@
