@@ -1,0 +1,11 @@
+ARG_ENABLE("dablooms", "for dablooms support", "no");
+
+if (PHP_DABLOOMS != "no") {
+    // Todo: dablooms does not support windows box yet.
+    if (CHECK_HEADER_ADD_INCLUDE("dablooms.h", "CFLAGS_DABLOOMS", ".\\src")) {
+        ADD_SOURCES(configure_module_dirname + ".\\src", "dablooms.c md5.c", "dablooms")
+        EXTENSION('dablooms', 'php_dablooms.c dablooms.c');
+    } else {
+        WARNING("dablooms not enabled;");
+    }
+}
