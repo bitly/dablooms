@@ -69,6 +69,22 @@ Look at the output of `make help` for more options.
 
 An example build might be `make install PYTHON=python2.7 BLDDIR=/tmp/dablooms/bld DESTDIR=/tmp/dablooms/pkg`
 
+##### godablooms
+For the Go package you can install outside of `make` via:
+
+    $ go get github.com/bitly/dablooms/godablooms
+
+However, we recommend using [go-install-as](https://github.com/mreiferson/go-install-as):
+
+    $ go tool install_as --import-as=bitly/dablooms
+
+To run tests:
+
+    $ go test
+
+NOTE: the Go package (and libdablooms) are not inherently thread safe, this is the 
+clients responsibility.
+
 ### Contributing
 If you make changes to C portions of dablooms which you would like merged into the
 upstream repository, it would help to have your code match our C coding style. We use
