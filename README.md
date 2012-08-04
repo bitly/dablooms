@@ -13,10 +13,6 @@ Bloom filters are a probabilistic  data structure that provide space-efficient
 storage of elements at the cost of possible false positive on membership
 queries.
 
-This project aims to demonstrate a novel construction that can scale,
-and provide not only the addition of new members, but reliable removal of existing
-members.
-
 **dablooms** implements such a structure that takes additional metadata to classify
 elements in order to make an intelligent decision as to which bloom filter an element
 should belong.
