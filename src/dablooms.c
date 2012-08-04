@@ -222,7 +222,7 @@ void new_salts(counting_bloom_t *bloom)
  * with our target size; we need to wrap them around
  * individually.
  */
-void hash_func(counting_bloom_t *bloom, const char *key, uint32_t *hashes)
+void hash_func(counting_bloom_t *bloom, const char *key, size_t key_len, uint32_t *hashes)
 {
     int i, j, hash_cnt;
     uint32_t hash;
@@ -230,7 +230,7 @@ void hash_func(counting_bloom_t *bloom, const char *key, uint32_t *hashes)
     
     for (i = 0; i < bloom->num_salts; i++) {
         unsigned char checksum[16];
-        MurmurHash3_x64_128(key, strlen(key), bloom->salts[i], &checksum);
+        MurmurHash3_x64_128(key, key_len, bloom->salts[i], &checksum);
         for (j = 0; j < sizeof(checksum); j += 4) {
             if (hash_cnt >= (bloom->nfuncs)) {
                 break;
@@ -322,12 +322,12 @@ counting_bloom_t *counting_bloom_from_file(unsigned capacity, double error_rate,
     return cur_bloom;
 }
 
-int counting_bloom_add(counting_bloom_t *bloom, const char *s)
+int counting_bloom_add(counting_bloom_t *bloom, const char *s, size_t len)
 {
     unsigned int index, i, offset;
     unsigned int *hashes = bloom->hashes;
     
-    hash_func(bloom, s, hashes);
+    hash_func(bloom, s, len, hashes);
     
     for (i = 0; i < bloom->nfuncs; i++) {
         offset = i * bloom->counts_per_func;
@@ -339,12 +339,12 @@ int counting_bloom_add(counting_bloom_t *bloom, const char *s)
     return 0;
 }
 
-int counting_bloom_remove(counting_bloom_t *bloom, const char *s)
+int counting_bloom_remove(counting_bloom_t *bloom, const char *s, size_t len)
 {
     unsigned int index, i, offset;
     unsigned int *hashes = bloom->hashes;
     
-    hash_func(bloom, s, hashes);
+    hash_func(bloom, s, len, hashes);
     
     for (i = 0; i < bloom->nfuncs; i++) {
         offset = i * bloom->counts_per_func;
@@ -356,12 +356,12 @@ int counting_bloom_remove(counting_bloom_t *bloom, const char *s)
     return 0;
 }
 
-int counting_bloom_check(counting_bloom_t *bloom, const char *s)
+int counting_bloom_check(counting_bloom_t *bloom, const char *s, size_t len)
 {
     unsigned int index, i, offset;
     unsigned int *hashes = bloom->hashes;
     
-    hash_func(bloom, s, hashes);
+    hash_func(bloom, s, len, hashes);
     
     for (i = 0; i < bloom->nfuncs; i++) {
         offset = i * bloom->counts_per_func;
@@ -429,7 +429,7 @@ counting_bloom_t *new_counting_bloom_from_scale(scaling_bloom_t *bloom, uint32_t
 }
 
 
-int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, uint32_t id)
+int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, size_t len, uint32_t id)
 {
     int i;
     int nblooms = bloom->num_blooms;
@@ -448,14 +448,14 @@ int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, uint32_t id)
     if ((*bloom->header->max_id) < id) {
         (*bloom->header->max_id) = id;
     }
-    counting_bloom_add(cur_bloom, s);
+    counting_bloom_add(cur_bloom, s, len);
     
     (*bloom->header->posseq) ++;
     
     return 1;
 }
 
-int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, uint32_t id)
+int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, size_t len, uint32_t id)
 {
     counting_bloom_t *cur_bloom;
     int id_diff, i;
@@ -465,7 +465,7 @@ int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, uint32_t id)
         id_diff = id - (*cur_bloom->header->id);
         if (id_diff >= 0) {
             (*bloom->header->preseq)++;
-            counting_bloom_remove(cur_bloom, s);
+            counting_bloom_remove(cur_bloom, s, len);
             (*bloom->header->posseq)++;
             return 1;
         }
@@ -473,13 +473,13 @@ int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, uint32_t id)
     return 0;
 }
 
-int scaling_bloom_check(scaling_bloom_t *bloom, const char *s)
+int scaling_bloom_check(scaling_bloom_t *bloom, const char *s, size_t len)
 {
     int i;
     counting_bloom_t *cur_bloom;
     for (i = bloom->num_blooms - 1; i >= 0; i--) {
         cur_bloom = bloom->blooms[i];
-        if (counting_bloom_check(cur_bloom, s)) {
+        if (counting_bloom_check(cur_bloom, s, len)) {
             return 1;
         }
     }

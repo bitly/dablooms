@@ -50,14 +50,14 @@ int test_scale(const char * filepath)
     
     for (i = 0; fgets(word, sizeof(word), fp); i++) {
         chomp_line(word);
-        scaling_bloom_add(bloom, word, i);
+        scaling_bloom_add(bloom, word, strlen(word), i);
     }
     
     fseek(fp, 0, SEEK_SET);
     for (i = 0; fgets(word, sizeof(word), fp); i++) {
         if (i % 5 == 0) {
             chomp_line(word);
-            scaling_bloom_remove(bloom, word, i);
+            scaling_bloom_remove(bloom, word, strlen(word), i);
         }
     }
     
@@ -70,7 +70,7 @@ int test_scale(const char * filepath)
     fseek(fp, 0, SEEK_SET);
     for (i = 0; fgets(word, sizeof(word), fp); i++) {
         chomp_line(word);
-        exists = scaling_bloom_check(bloom, word);
+        exists = scaling_bloom_check(bloom, word, strlen(word));
         if (i % 5 == 0) {
             /* this element was removed above */
             if (exists) {
