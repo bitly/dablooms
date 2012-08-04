@@ -1,4 +1,4 @@
-[Dablooms](http://github.com/bitly/dablooms)
+[dablooms](http://github.com/bitly/dablooms)
 ========
 
 A Scalable, Counting, Bloom Filter
@@ -17,12 +17,12 @@ This project aims to demonstrate a novel construction that can scale,
 and provide not only the addition of new members, but reliable removal of existing
 members.
 
-**Dablooms** implements such a structure that takes additional metadata to classify
+**dablooms** implements such a structure that takes additional metadata to classify
 elements in order to make an intelligent decision as to which bloom filter an element
 should belong.
 
 ### Features
-**Dablooms**, in addition to the above, has several features.
+**dablooms**, in addition to the above, has several features.
 
 * Implemented as a static C library
 * Memory mapped
@@ -178,16 +178,15 @@ is possible to correctly determine which filter an element belongs to, thereby a
 to maintain the integrity of a given bloom filter with accurate additions
 and removals.
 
-## Enter Dablooms
-Dablooms is one such implementation of a
-scaling, counting, bloom filter that takes additional metadata during additions
-and deletions in the form of a monotonically increasing integer to classify
-elements such as a timestamp. This is used during additions/removals to easily
-classify an element into the correct bloom filter (essentially a comparison against a
-range).
+## Enter dablooms
+dablooms is one such implementation of a scaling, counting, bloom filter that takes 
+additional metadata during additions and deletions in the form of a monotonically 
+increasing integer to classify elements such as a timestamp. This is used during 
+additions/removals to easily classify an element into the correct bloom filter 
+(essentially a comparison against a range).
 
-Dablooms is designed to scale itself using these monotonically increasing identifiers
-and the given capacity. When a bloom filter is at capacity, Dablooms will create a new
+dablooms is designed to scale itself using these monotonically increasing identifiers
+and the given capacity. When a bloom filter is at capacity, dablooms will create a new
 bloom filter using the to-be-added elements identifier as the beginning identifier for
 the new bloom filter. Given the fact that the identifiers monotonically increase, new
 elements will be added to the newest bloom filter. Note, in theory and as implemented,
