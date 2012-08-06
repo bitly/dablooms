@@ -99,7 +99,7 @@ $(BLDDIR)/test_dablooms: $(OBJS_TESTS) $(BLDDIR)/libdablooms.a
 	@$(CC) -o $@ $(OBJS_TESTS) -L$(BLDDIR) $(LDFLAGS) -l dablooms $(LDLIBS)
 
 test: $(BLDDIR)/test_dablooms
-	$(BLDDIR)/test_dablooms $(WORDS)
+	@$(BLDDIR)/test_dablooms $(WORDS)
 
 $(PY_BLDDIR)/pydablooms.so: $(BLDDIR)/libdablooms.a $(PY_SRCDIR)/pydablooms.c
 	@echo " PY_BUILD" $@
@@ -122,4 +122,5 @@ clean:
 
 help:
 	@printf $(HELPTEXT)
+
 .PHONY: all clean help install test install_libdablooms install_pydablooms libdablooms pydablooms
