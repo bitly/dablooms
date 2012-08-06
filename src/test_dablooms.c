@@ -1,11 +1,11 @@
-#include<stdio.h>
-#include<string.h>
-#include<sys/types.h>
-#include<sys/stat.h>
-#include<fcntl.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdlib.h>
 
-#include"dablooms.h"
+#include "dablooms.h"
 
 #define FILEPATH "/tmp/bloom.bin"
 #define CAPACITY 100000
@@ -26,11 +26,12 @@ void chomp_line(char *word)
 int test_scale(const char * filepath)
 {
     FILE *fp, *file;
-    char word[128];
+    char word[256];
     scaling_bloom_t *bloom;
-    int i, iremove = 0;
-    int not_exist_pass = 0, not_exist_fail = 0;
-    int exist_pass = 0, exist_fail = 0;
+    float false_positive_rate;
+    int i, exists;
+    int true_positives = 0, true_negatives = 0,
+        false_positives = 0, false_negatives = 0;
     
     if ((file = fopen(FILEPATH, "r"))) {
         fclose(file);
@@ -47,20 +48,16 @@ int test_scale(const char * filepath)
         return EXIT_FAILURE;
     }
     
-    for (i = 0; fgets(word, 128, fp); i++) {
-        if (word != NULL) {
-            chomp_line(word);
-            scaling_bloom_add(bloom, word, i);
-        }
+    for (i = 0; fgets(word, sizeof(word), fp); i++) {
+        chomp_line(word);
+        scaling_bloom_add(bloom, word, i);
     }
     
     fseek(fp, 0, SEEK_SET);
-    for (iremove = 0; fgets(word, 128, fp); iremove++) {
-        if (word != NULL) {
-            if (iremove % 5 == 0) {
-                chomp_line(word);
-                scaling_bloom_remove(bloom, word, iremove);
-            }
+    for (i = 0; fgets(word, sizeof(word), fp); i++) {
+        if (i % 5 == 0) {
+            chomp_line(word);
+            scaling_bloom_remove(bloom, word, i);
         }
     }
     
@@ -71,38 +68,60 @@ int test_scale(const char * filepath)
     bloom = new_scaling_bloom_from_file(CAPACITY, ERROR_RATE, FILEPATH);
     
     fseek(fp, 0, SEEK_SET);
-    for (i = 0; fgets(word, 128, fp); i++) {
-        if (word != NULL) {
-            chomp_line(word);
-            if (i % 5 == 0) {
-                if (!(scaling_bloom_check(bloom, word))) {
-                    not_exist_pass ++;
-                } else {
-                    not_exist_fail ++;
-                }
+    for (i = 0; fgets(word, sizeof(word), fp); i++) {
+        chomp_line(word);
+        exists = scaling_bloom_check(bloom, word);
+        if (i % 5 == 0) {
+            /* this element was removed above */
+            if (exists) {
+                false_positives++;
             } else {
-                if (scaling_bloom_check(bloom, word)) {
-                    exist_pass ++;
-                } else {
-                    fprintf(stderr, "%s\n", word);
-                    exist_fail ++;
-                }
+                true_negatives++;
+            }
+        } else {
+            /* this element should still exist */
+            if (exists) {
+                true_positives++;
+            } else {
+                false_negatives++;
+                fprintf(stderr, "ERROR: False negative: '%s'\n", word);
             }
         }
     }
-    
-    fprintf(stderr, "\nElements Added:   %i\n", i);
-    fprintf(stderr, "Elements Removed: %i\n\n", i/5);
-    fprintf(stderr, "True positives:   %i\n", exist_pass);
-    fprintf(stderr, "True negatives:   %i\n", not_exist_pass);
-    fprintf(stderr, "False positives:  %i\n", not_exist_fail);
-    fprintf(stderr, "False negatives:  %i\n\n", exist_fail);
-    fprintf(stderr, "Total size: %i kB\n", (int) bloom->num_bytes/1024);
-    
     fclose(fp);
+    
+    false_positive_rate = (float)false_positives / (false_positives + true_negatives);
+    
+    printf(                         "\n"
+           "Elements added:   %6d"  "\n"
+           "Elements removed: %6d"  "\n"
+                                    "\n"
+           "True positives:   %6d"  "\n"
+           "True negatives:   %6d"  "\n"
+           "False positives:  %6d"  "\n"
+           "False negatives:  %6d"  "\n"
+                                    "\n"
+           "False positive rate: %.4f\n"
+           "Total size: %d KiB"     "\n",
+           i, i/5,
+           true_positives, true_negatives,
+           false_positives, false_negatives,
+           false_positive_rate,
+           (int) bloom->num_bytes/1024
+          );
+    
     free_scaling_bloom(bloom);
     
-    return 0;
+    if (false_negatives > 0) {
+        printf("TEST FAIL (false negatives exist)\n");
+    } else if (false_positive_rate > ERROR_RATE) {
+        printf("TEST FAIL (false positive rate too high)\n");
+    } else {
+        printf("TEST PASS\n");
+    }
+    printf("\n");
+    
+    return EXIT_SUCCESS;
 }
 
 int main(int argc, char *argv[])
@@ -116,6 +135,5 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     } 
     filepath = argv[1]; 
-    test_scale(filepath);
-    return EXIT_SUCCESS;
+    return test_scale(filepath);
 }
