@@ -21,12 +21,10 @@ HELPTEXT = "\
 \n                               \
 \n  Targets                      \
 \n                               \
-\n    all                        \
-\n    libdablooms                \
+\n    all        (c libdablooms) \
 \n    pydablooms                 \
 \n                               \
-\n    install                    \
-\n    install_libdablooms        \
+\n    install    (c libdablooms) \
 \n    install_pydablooms         \
 \n                               \
 \n    clean                      \
@@ -65,13 +63,14 @@ WORDS = /usr/share/dict/words
 OBJS_LIBDABLOOMS = $(patsubst %.c, $(BLDDIR)/%.o, $(SRCS_LIBDABLOOMS))
 OBJS_TESTS = $(patsubst %.c, $(BLDDIR)/%.o, $(SRCS_TESTS))
 
-all:  libdablooms pydablooms $(BLDDIR)/test_dablooms
+# default target
+all: libdablooms
 
 # sort removes duplicates
 DEPS := $(sort $(patsubst %.o, %.o.deps, $(OBJS_LIBDABLOOMS) $(OBJS_TESTS)))
 -include $(DEPS)
 
-install: install_libdablooms install_pydablooms
+install: install_libdablooms
 
 install_libdablooms: $(DESTDIR)$(LIBDIR)/libdablooms.a $(DESTDIR)$(INCDIR)/dablooms.h
 
