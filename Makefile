@@ -27,8 +27,10 @@ HELPTEXT = "\
 \n    install    (c libdablooms) \
 \n    install_pydablooms         \
 \n                               \
-\n    clean                      \
 \n    test                       \
+\n    test_pydablooms            \
+\n                               \
+\n    clean                      \
 \n    help                       \
 \n\n                             \
 "
@@ -104,6 +106,9 @@ test: $(BLDDIR)/test_dablooms
 $(PY_BLDDIR)/pydablooms.so: $(BLDDIR)/libdablooms.a $(PY_SRCDIR)/pydablooms.c
 	@echo " PY_BUILD" $@
 	@$(PY_BLD_ENV) $(PYTHON) $(PY_SRCDIR)/setup.py build $(PY_FLAGS) >/dev/null
+
+test_pydablooms: pydablooms
+	@PYTHONPATH=$(PY_BLDDIR) $(PYTHON) $(PY_SRCDIR)/test_pydablooms.py $(WORDS)
 
 $(BLDDIR)/%.o: $(SRCDIR)/%.c
 	@echo " CC " $@
