@@ -69,6 +69,16 @@ Look at the output of `make help` for more options.
 
 An example build might be `make install PYTHON=python2.7 BLDDIR=/tmp/dablooms/bld DESTDIR=/tmp/dablooms/pkg`
 
+### Contributing
+If you make changes to C portions of dablooms which you would like merged into the
+upstream repository, it would help to have your code match our C coding style. We use
+[astyle](http://astyle.sourceforge.net/), svn rev 353 or later, on our code, with the
+following options:
+
+    astyle --style=1tbs --lineend=linux --convert-tabs --preserve-date \
+           --fill-empty-lines --pad-header --indent-switches           \
+           --align-pointer=name --align-reference=name --pad-oper -n     <files>
+
 ### Testing
 To run a quick and dirty test, type `make test`.  This test files uses `dict\words`
 and defaults to `/usr/share/dict/words`. If your path differs, you can use the
