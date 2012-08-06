@@ -78,7 +78,7 @@ install_pydablooms: $(DESTDIR)$(PY_MOD_DIR)/pydablooms.so
 
 libdablooms: $(BLDDIR)/libdablooms.a
 
-pydablooms: libdablooms $(PY_BLDDIR)/pydablooms.so
+pydablooms: $(PY_BLDDIR)/pydablooms.so
 
 $(DESTDIR)$(LIBDIR)/libdablooms.a: $(BLDDIR)/libdablooms.a
 
@@ -101,7 +101,7 @@ $(BLDDIR)/test_dablooms: $(OBJS_TESTS) $(BLDDIR)/libdablooms.a
 test: $(BLDDIR)/test_dablooms
 	$(BLDDIR)/test_dablooms $(WORDS)
 
-$(PY_BLDDIR)/pydablooms.so: $(BLDDIR)/libdablooms.a
+$(PY_BLDDIR)/pydablooms.so: $(BLDDIR)/libdablooms.a $(PY_SRCDIR)/pydablooms.c
 	@echo " PY_BUILD" $@
 	@$(PY_BLD_ENV) $(PYTHON) $(PY_SRCDIR)/setup.py build $(PY_FLAGS) >/dev/null
 

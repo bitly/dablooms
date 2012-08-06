@@ -1,5 +1,5 @@
 from distutils.core import setup, Extension
-import os, sys, string
+import os, sys
 
 def local_path(path):
     local_dir = os.path.dirname(__file__)
