@@ -1,11 +1,11 @@
-#include<stdio.h>
-#include<string.h>
-#include<sys/types.h>
-#include<sys/stat.h>
-#include<fcntl.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdlib.h>
 
-#include"dablooms.h"
+#include "dablooms.h"
 
 #define FILEPATH "/tmp/bloom.bin"
 #define CAPACITY 100000
