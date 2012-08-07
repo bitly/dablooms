@@ -15,7 +15,7 @@
 #include "md5.h"
 #include "dablooms.h"
 
-#define DABLOOMS_VERSION "0.8.1"
+#define DABLOOMS_VERSION "0.8.2"
 
 #define HEADER_BYTES (2*sizeof(uint32_t))
 #define SCALE_HEADER_BYTES (3*sizeof(uint64_t))

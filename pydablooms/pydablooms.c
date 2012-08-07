@@ -2,8 +2,6 @@
 #include "dablooms.h"
 #include "structmember.h"
 
-#define PYDABLOOMS_VERSION "0.6"
-
 int Py_ModuleVersion = 1;
 
 typedef struct {
@@ -195,7 +193,7 @@ PyMODINIT_FUNC initpydablooms(void)
         return;
     }
     
-    PyModule_AddObject(m, "__version__", PyString_FromString(PYDABLOOMS_VERSION));
+    PyModule_AddObject(m, "__version__", PyString_FromString(dablooms_version()));
     
     Py_INCREF(&DabloomsType);
     PyModule_AddObject(m, "Dablooms", (PyObject *)&DabloomsType);
