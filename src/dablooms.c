@@ -20,6 +20,7 @@
 #define HEADER_BYTES (2*sizeof(uint32_t))
 #define SCALE_HEADER_BYTES (3*sizeof(uint64_t))
 #define SALT_SIZE 16
+#define ERROR_TIGHTENING_RATIO .7
 
 const char *dablooms_version(void)
 {
@@ -389,7 +390,7 @@ counting_bloom_t *new_counting_bloom_from_scale(scaling_bloom_t *bloom, uint32_t
     double error_rate;
     counting_bloom_t *cur_bloom;
     
-    error_rate = bloom->error_rate * (pow(.9, bloom->num_blooms + 1));
+    error_rate = bloom->error_rate * (pow(ERROR_TIGHTENING_RATIO, bloom->num_blooms + 1));
     
     if ((bloom->blooms = realloc(bloom->blooms, (bloom->num_blooms + 1) * sizeof(counting_bloom_t *))) == NULL) {
         fprintf(stderr, "Error, could not realloc a new bloom filter\n");
