@@ -143,8 +143,8 @@ int bitmap_increment(bitmap_t *bitmap, unsigned int index, unsigned int offset)
 int bitmap_decrement(bitmap_t *bitmap, unsigned int index, unsigned int offset)
 {
     uint32_t access = index / 2 + offset;
-    uint32_t temp;
-    uint32_t n = bitmap->array[access];
+    uint8_t temp;
+    uint8_t n = bitmap->array[access];
     
     if (index % 2 != 0) {
         temp = (n & 0x0f);
