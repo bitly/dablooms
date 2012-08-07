@@ -6,11 +6,11 @@ def local_path(path):
     return os.path.normpath(os.path.join(local_dir, path))
 
 def parse_version_from_c():
-    cfile = open(local_path('pydablooms.c'))
+    cfile = open(local_path('../src/dablooms.c'))
     result = ''
     for line in cfile:
         parts = line.split()
-        if len(parts) == 3 and parts[:2] == ['#define', 'PYDABLOOMS_VERSION']:
+        if len(parts) == 3 and parts[:2] == ['#define', 'DABLOOMS_VERSION']:
             result = parts[2].strip('"')
             break
     cfile.close()
