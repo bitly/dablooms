@@ -64,7 +64,6 @@ typedef struct {
     unsigned int capacity;
     unsigned int num_blooms;
     size_t num_bytes;
-    size_t size;
     double error_rate;
     int fd;
     counting_bloom_t **blooms;
