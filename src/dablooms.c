@@ -277,7 +277,7 @@ counting_bloom_t *counting_bloom_init(unsigned int capacity, double error_rate,
     bloom->nfuncs = (int) ceil(log(1 / error_rate) / log(2));
     bloom->counts_per_func = (int) ceil(capacity * fabs(log(error_rate)) / (bloom->nfuncs * pow(log(2), 2)));
     bloom->size = ceil(bloom->nfuncs * bloom->counts_per_func);
-    bloom->num_bytes = (int) ceil(bloom->size / 2 + HEADER_BYTES);
+    bloom->num_bytes = ((bloom->size + 1) / 2) + HEADER_BYTES; /* "+1" causes a rounding-up integer "/2" */
     bloom->hashes = calloc(bloom->nfuncs, sizeof(unsigned int));
     new_salts(bloom);
     
