@@ -517,7 +517,7 @@ scaling_bloom_t *scaling_bloom_init(unsigned int capacity, double error_rate, co
     return bloom;
 }
 
-scaling_bloom_t *new_scaling_bloom(unsigned int capacity, double error_rate, const char *filename, uint32_t id)
+scaling_bloom_t *new_scaling_bloom(unsigned int capacity, double error_rate, const char *filename)
 {
 
     scaling_bloom_t *bloom;
@@ -532,7 +532,7 @@ scaling_bloom_t *new_scaling_bloom(unsigned int capacity, double error_rate, con
     
     bloom = scaling_bloom_init(capacity, error_rate, filename, fd);
     
-    if (!(cur_bloom = new_counting_bloom_from_scale(bloom, id, 0))) {
+    if (!(cur_bloom = new_counting_bloom_from_scale(bloom, 0, 0))) {
         fprintf(stderr, "Error, Could not create counting bloom\n");
         free_scaling_bloom(bloom);
         return NULL;

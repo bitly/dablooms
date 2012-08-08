@@ -15,8 +15,7 @@ words_fname = sys.argv[1]
 
 bloom = pydablooms.Dablooms(capacity=initial_capacity,
                            error_rate=error_rate,
-                           filepath=bloom_fname,
-                           id=0)
+                           filepath=bloom_fname)
 
 words_file = open(words_fname, 'rb')
 i = 0
