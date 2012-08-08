@@ -102,7 +102,7 @@ $(DESTDIR)$(INCDIR)/dablooms.h: $(SRCDIR)/dablooms.h
 $(DESTDIR)$(PREFIX)/%:
 	@echo " INSTALL " $@
 	@$(INSTALL) -d $(dir $@)
-	@$(INSTALL) -C $< $@
+	@$(INSTALL) $< $@
 
 $(BLDDIR)/%.o: $(SRCDIR)/%.c
 	@echo " CC " $@
@@ -155,7 +155,7 @@ install_pydablooms: $(DESTDIR)$(PY_MOD_DIR)/pydablooms.so
 $(DESTDIR)$(PY_MOD_DIR)/pydablooms.so: $(PY_BLDDIR)/pydablooms.so
 	@echo " PY_INSTALL " $@
 	@$(INSTALL) -d $(dir $@)
-	@$(INSTALL) -C $< $@
+	@$(INSTALL) $< $@
 
 $(PY_BLDDIR)/pydablooms.so: $(BLDDIR)/libdablooms.a $(PY_SRCDIR)/pydablooms.c
 	@echo " PY_BUILD" $@
