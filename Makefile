@@ -129,7 +129,7 @@ help:
 	@printf $(HELPTEXT)
 
 clean:
-	rm -f $(OBJS_LIBDABLOOMS) $(BLDDIR)/libdablooms.a $(BLDDIR)/libdablooms.*$(SO_NAME)* $(OBJS_TESTS) $(BLDDIR)/test_dablooms $(DEPS)
+	rm -f $(OBJS_LIBDABLOOMS) $(patsubst %, $(BLDDIR)/%, $(LIB_FILES)) $(OBJS_TESTS) $(BLDDIR)/test_dablooms $(DEPS)
 	rmdir $(BLDDIR)
 
 .PHONY: all clean help install test libdablooms install_libdablooms
