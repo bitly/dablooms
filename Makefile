@@ -32,6 +32,10 @@ HELPTEXT = "\
 \n    test_pydablooms            \
 \n\n"
 
+# only bump major on ABI changing release
+SO_VER_MAJOR = 1
+SO_VER_MINOR = 0
+
 PREFIX = /usr/local
 LIBDIR = $(PREFIX)/lib
 INCDIR = $(PREFIX)/include
@@ -49,11 +53,27 @@ INSTALL = install
 CC = gcc
 AR = ar
 
+SO_VER = $(SO_VER_MAJOR).$(SO_VER_MINOR)
+SO_NAME = so
+SO_CMD = -soname
+SO_EXT_MAJOR = $(SO_NAME).$(SO_VER_MAJOR)
+SO_EXT = $(SO_NAME).$(SO_VER)
+UNAME := $(shell uname -s)
+ifeq ($(UNAME),Darwin)
+	SO_NAME = dylib
+	SO_CMD = -install_name
+	SO_EXT_MAJOR = $(SO_VER_MAJOR).$(SO_NAME)
+	SO_EXT = $(SO_VER).$(SO_NAME)
+endif
+
 SRCS_LIBDABLOOMS = md5.c dablooms.c
 SRCS_TESTS = test_dablooms.c
 WORDS = /usr/share/dict/words
 OBJS_LIBDABLOOMS = $(patsubst %.c, $(BLDDIR)/%.o, $(SRCS_LIBDABLOOMS))
 OBJS_TESTS = $(patsubst %.c, $(BLDDIR)/%.o, $(SRCS_TESTS))
+
+LIB_SYMLNKS = libdablooms.$(SO_NAME) libdablooms.$(SO_EXT_MAJOR)
+LIB_FILES = libdablooms.a libdablooms.$(SO_EXT) $(LIB_SYMLNKS)
 
 # default target (needs to be first target)
 all: libdablooms
@@ -62,20 +82,27 @@ all: libdablooms
 DEPS := $(sort $(patsubst %.o, %.o.deps, $(OBJS_LIBDABLOOMS) $(OBJS_TESTS)))
 -include $(DEPS)
 
+libdablooms: $(patsubst %, $(BLDDIR)/%, $(LIB_FILES))
+
 install: install_libdablooms
 
-libdablooms: $(BLDDIR)/libdablooms.a
-
-install_libdablooms: $(DESTDIR)$(LIBDIR)/libdablooms.a $(DESTDIR)$(INCDIR)/dablooms.h
+install_libdablooms: $(patsubst %, $(DESTDIR)$(LIBDIR)/%, $(LIB_FILES)) $(DESTDIR)$(INCDIR)/dablooms.h
 
 $(DESTDIR)$(LIBDIR)/libdablooms.a: $(BLDDIR)/libdablooms.a
+
+$(DESTDIR)$(LIBDIR)/libdablooms.$(SO_EXT): $(BLDDIR)/libdablooms.$(SO_EXT)
+
+$(patsubst %, $(DESTDIR)$(LIBDIR)/%, $(LIB_SYMLNKS)): %: $(DESTDIR)$(LIBDIR)/libdablooms.$(SO_EXT)
+	@echo " SYMLNK " $@
+	@$(INSTALL) -d $(dir $@)
+	@ln -fs $(notdir $<) $@
 
 $(DESTDIR)$(INCDIR)/dablooms.h: $(SRCDIR)/dablooms.h
 
 $(DESTDIR)$(PREFIX)/%:
 	@echo " INSTALL " $@
 	@$(INSTALL) -d $(dir $@)
-	@$(INSTALL) -C $< $@
+	@$(INSTALL) $< $@
 
 $(BLDDIR)/%.o: $(SRCDIR)/%.c
 	@echo " CC " $@
@@ -86,6 +113,15 @@ $(BLDDIR)/libdablooms.a: $(OBJS_LIBDABLOOMS)
 	@echo " AR " $@
 	@rm -f $@
 	@$(AR) rcs $@ $^
+
+$(BLDDIR)/libdablooms.$(SO_EXT): $(OBJS_LIBDABLOOMS)
+	@echo " SO " $@
+	@$(CC) -shared -Wl,$(SO_CMD),libdablooms.$(SO_EXT_MAJOR) -o $@ $^
+
+$(patsubst %, $(BLDDIR)/%, $(LIB_SYMLNKS)): %: $(BLDDIR)/libdablooms.$(SO_EXT)
+	@echo " SYMLNK " $@
+	@mkdir -p $(dir $@)
+	@ln -fs $(notdir $<) $@
 
 $(BLDDIR)/test_dablooms: $(OBJS_TESTS) $(BLDDIR)/libdablooms.a
 	@echo " LD " $@
@@ -98,7 +134,7 @@ help:
 	@printf $(HELPTEXT)
 
 clean:
-	rm -f $(OBJS_LIBDABLOOMS) $(BLDDIR)/libdablooms.a $(OBJS_TESTS) $(BLDDIR)/test_dablooms $(DEPS)
+	rm -f $(OBJS_LIBDABLOOMS) $(BLDDIR)/libdablooms.a $(BLDDIR)/libdablooms.*$(SO_NAME)* $(OBJS_TESTS) $(BLDDIR)/test_dablooms $(DEPS)
 	rmdir $(BLDDIR)
 
 .PHONY: all clean help install test libdablooms install_libdablooms
@@ -119,7 +155,7 @@ install_pydablooms: $(DESTDIR)$(PY_MOD_DIR)/pydablooms.so
 $(DESTDIR)$(PY_MOD_DIR)/pydablooms.so: $(PY_BLDDIR)/pydablooms.so
 	@echo " PY_INSTALL " $@
 	@$(INSTALL) -d $(dir $@)
-	@$(INSTALL) -C $< $@
+	@$(INSTALL) $< $@
 
 $(PY_BLDDIR)/pydablooms.so: $(BLDDIR)/libdablooms.a $(PY_SRCDIR)/pydablooms.c
 	@echo " PY_BUILD" $@
