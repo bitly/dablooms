@@ -16,14 +16,12 @@ def parse_version_from_c():
     cfile.close()
     return result
 
-def paths_from_env(name, default):
-    paths_str = os.environ.get(name, local_path(default))
-    return paths_str.split()
+def path_from_env(name, default):
+    return os.environ.get(name, local_path(default))
 
 module1 = Extension('pydablooms', 
-                    include_dirs = paths_from_env('INCPATH', '../src'),
-                    libraries = ['dablooms'],
-                    library_dirs = paths_from_env('LIBPATH', '../build'),
+                    include_dirs = [local_path('../src')],
+                    extra_objects = [os.path.join(path_from_env('BLDDIR', '../build'), 'libdablooms.a')],
                     sources = [local_path('pydablooms.c')],
                    )
 
