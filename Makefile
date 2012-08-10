@@ -11,9 +11,7 @@ HELPTEXT = "\
 \n                               \
 \n    CC         ($(CC))         \
 \n    CFLAGS     ($(CFLAGS))     \
-\n    INCPATH    ($(INCPATH))    \
 \n    LDFLAGS    ($(LDFLAGS))    \
-\n    LIBPATH    ($(LIBPATH))    \
 \n    INSTALL    ($(INSTALL))    \
 \n                               \
 \n    PYTHON     ($(PYTHON))     \
@@ -40,13 +38,10 @@ PREFIX = /usr/local
 LIBDIR = $(PREFIX)/lib
 INCDIR = $(PREFIX)/include
 DESTDIR =
-SRCDIR = src
 BLDDIR = build
 
-INCPATH =
-CFLAGS = -g -Wall -fPIC $(patsubst %, -I%, $(INCPATH))
-LIBPATH =
-LDFLAGS = -g $(patsubst %, -L%, $(LIBPATH))
+CFLAGS = -g -Wall -fPIC
+LDFLAGS = -g
 LDLIBS = -lm
 
 INSTALL = install
@@ -97,14 +92,14 @@ $(patsubst %, $(DESTDIR)$(LIBDIR)/%, $(LIB_SYMLNKS)): %: $(DESTDIR)$(LIBDIR)/lib
 	@$(INSTALL) -d $(dir $@)
 	@ln -fs $(notdir $<) $@
 
-$(DESTDIR)$(INCDIR)/dablooms.h: $(SRCDIR)/dablooms.h
+$(DESTDIR)$(INCDIR)/dablooms.h: src/dablooms.h
 
 $(DESTDIR)$(PREFIX)/%:
 	@echo " INSTALL " $@
 	@$(INSTALL) -d $(dir $@)
 	@$(INSTALL) $< $@
 
-$(BLDDIR)/%.o: $(SRCDIR)/%.c
+$(BLDDIR)/%.o: src/%.c
 	@echo " CC " $@
 	@mkdir -p $(dir $@)
 	@$(CC) -o $@ -c $< $(CFLAGS) -MMD -MF $@.deps
@@ -125,7 +120,7 @@ $(patsubst %, $(BLDDIR)/%, $(LIB_SYMLNKS)): %: $(BLDDIR)/libdablooms.$(SO_EXT)
 
 $(BLDDIR)/test_dablooms: $(OBJS_TESTS) $(BLDDIR)/libdablooms.a
 	@echo " LD " $@
-	@$(CC) -o $@ $(OBJS_TESTS) -L$(BLDDIR) $(LDFLAGS) -l dablooms $(LDLIBS)
+	@$(CC) -o $@ $(LDFLAGS) $(OBJS_TESTS) $(BLDDIR)/libdablooms.a $(LDLIBS)
 
 test: $(BLDDIR)/test_dablooms
 	@$(BLDDIR)/test_dablooms $(WORDS)
@@ -134,7 +129,7 @@ help:
 	@printf $(HELPTEXT)
 
 clean:
-	rm -f $(OBJS_LIBDABLOOMS) $(BLDDIR)/libdablooms.a $(BLDDIR)/libdablooms.*$(SO_NAME)* $(OBJS_TESTS) $(BLDDIR)/test_dablooms $(DEPS)
+	rm -f $(OBJS_LIBDABLOOMS) $(patsubst %, $(BLDDIR)/%, $(LIB_FILES)) $(OBJS_TESTS) $(BLDDIR)/test_dablooms $(DEPS)
 	rmdir $(BLDDIR)
 
 .PHONY: all clean help install test libdablooms install_libdablooms
@@ -142,11 +137,10 @@ clean:
 ### pydablooms ###
 
 PYTHON = python
-PY_SRCDIR = pydablooms
 PY_BLDDIR = $(BLDDIR)/python
 PY_MOD_DIR := $(shell $(PYTHON) -c "import distutils.sysconfig ; print(distutils.sysconfig.get_python_lib())")
 PY_FLAGS = --build-lib=$(PY_BLDDIR) --build-temp=$(PY_BLDDIR)
-PY_BLD_ENV = INCPATH="$(SRCDIR) $(INCPATH)" LIBPATH="$(BLDDIR) $(LIBPATH)"
+PY_BLD_ENV = BLDDIR="$(BLDDIR)"
 
 pydablooms: $(PY_BLDDIR)/pydablooms.so
 
@@ -157,16 +151,16 @@ $(DESTDIR)$(PY_MOD_DIR)/pydablooms.so: $(PY_BLDDIR)/pydablooms.so
 	@$(INSTALL) -d $(dir $@)
 	@$(INSTALL) $< $@
 
-$(PY_BLDDIR)/pydablooms.so: $(BLDDIR)/libdablooms.a $(PY_SRCDIR)/pydablooms.c
+$(PY_BLDDIR)/pydablooms.so: $(BLDDIR)/libdablooms.a pydablooms/pydablooms.c
 	@echo " PY_BUILD" $@
-	@$(PY_BLD_ENV) $(PYTHON) $(PY_SRCDIR)/setup.py build $(PY_FLAGS) >/dev/null
+	@$(PY_BLD_ENV) $(PYTHON) pydablooms/setup.py build $(PY_FLAGS) >/dev/null
 
 test_pydablooms: pydablooms
-	@PYTHONPATH=$(PY_BLDDIR) $(PYTHON) $(PY_SRCDIR)/test_pydablooms.py $(WORDS)
+	@PYTHONPATH=$(PY_BLDDIR) $(PYTHON) pydablooms/test_pydablooms.py $(WORDS)
 
 clean: clean_pydablooms
 clean_pydablooms:
 	rm -f $(BLDDIR)/pydablooms.so
-	$(PYTHON) $(PY_SRCDIR)/setup.py clean $(PY_FLAGS)
+	$(PYTHON) pydablooms/setup.py clean $(PY_FLAGS)
 
 .PHONY: pydablooms install_pydablooms test_pydablooms clean_pydablooms
