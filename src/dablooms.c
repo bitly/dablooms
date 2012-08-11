@@ -431,9 +431,8 @@ counting_bloom_t *new_counting_bloom_from_scale(scaling_bloom_t *bloom, uint32_t
 int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, size_t len, uint32_t id)
 {
     int i;
-    int nblooms = bloom->num_blooms;
     counting_bloom_t *cur_bloom = NULL;
-    for (i = nblooms - 1; i >= 0; i--) {
+    for (i = bloom->num_blooms - 1; i >= 0; i--) {
         cur_bloom = bloom->blooms[i];
         if (id >= *cur_bloom->header->id) {
             break;
