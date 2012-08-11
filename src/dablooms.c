@@ -198,7 +198,7 @@ void new_salts(counting_bloom_t *bloom)
     uint32_t seed = 0xd5702acb;
     bloom->salts = calloc(bloom->num_salts, sizeof(uint32_t));
     for (i = 0; i < bloom->num_salts; i += 4) {
-        unsigned char checksum[16];
+        uint32_t checksum[4];
         int salts_to_copy = bloom->num_salts - i;
         if (salts_to_copy > 4) {
             salts_to_copy = 4;
@@ -206,7 +206,7 @@ void new_salts(counting_bloom_t *bloom)
         key_data = key_data ^ i;
         MurmurHash3_x64_128(&key_data, sizeof(key_data), seed, &checksum);
         memcpy(bloom->salts + i, &checksum, salts_to_copy * sizeof(uint32_t));
-        key_data = *(uint32_t *)checksum;
+        key_data = checksum[0];
     }
 }
 
@@ -432,7 +432,7 @@ int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, size_t len, uint32_
 {
     int i;
     int nblooms = bloom->num_blooms;
-    counting_bloom_t *cur_bloom;
+    counting_bloom_t *cur_bloom = NULL;
     for (i = nblooms - 1; i >= 0; i--) {
         cur_bloom = bloom->blooms[i];
         if (id >= *cur_bloom->header->id) {

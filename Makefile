@@ -40,7 +40,7 @@ INCDIR = $(PREFIX)/include
 DESTDIR =
 BLDDIR = build
 
-CFLAGS = -g -Wall -fPIC
+CFLAGS = -g -Wall -fPIC -O2
 LDFLAGS = -g
 LDLIBS = -lm
 
