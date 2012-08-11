@@ -1,19 +1,19 @@
 import sys, os
 import pydablooms
 
-bloom_fname = '/tmp/bloom.bin'
-initial_capacity = 100000
+capacity = 100000
 error_rate = 0.05
 
 print("pydablooms version: %s" % pydablooms.__version__)
 
-if len(sys.argv) != 2:
-    sys.stderr.write("Usage: %s <words_file>\n" % sys.argv[0])
+if len(sys.argv) != 3:
+    sys.stderr.write("Usage: %s <bloom_file> <words_file>\n" % sys.argv[0])
     sys.exit(1)
 
-words_fname = sys.argv[1]
+bloom_fname = sys.argv[1]
+words_fname = sys.argv[2]
 
-bloom = pydablooms.Dablooms(capacity=initial_capacity,
+bloom = pydablooms.Dablooms(capacity=capacity,
                            error_rate=error_rate,
                            filepath=bloom_fname)
 
@@ -33,7 +33,7 @@ for line in words_file:
 bloom.flush()
 del bloom
 
-bloom = pydablooms.load_dabloom(capacity=initial_capacity,
+bloom = pydablooms.load_dabloom(capacity=capacity,
                                 error_rate=error_rate,
                                 filepath=bloom_fname)
 

@@ -123,13 +123,13 @@ $(BLDDIR)/test_dablooms: $(OBJS_TESTS) $(BLDDIR)/libdablooms.a
 	@$(CC) -o $@ $(LDFLAGS) $(OBJS_TESTS) $(BLDDIR)/libdablooms.a $(LDLIBS)
 
 test: $(BLDDIR)/test_dablooms
-	@$(BLDDIR)/test_dablooms $(WORDS)
+	@$(BLDDIR)/test_dablooms $(BLDDIR)/testbloom.bin $(WORDS)
 
 help:
 	@printf $(HELPTEXT)
 
 clean:
-	rm -f $(OBJS_LIBDABLOOMS) $(patsubst %, $(BLDDIR)/%, $(LIB_FILES)) $(OBJS_TESTS) $(BLDDIR)/test_dablooms $(DEPS)
+	rm -f $(DEPS) $(OBJS_LIBDABLOOMS) $(patsubst %, $(BLDDIR)/%, $(LIB_FILES)) $(OBJS_TESTS) $(BLDDIR)/test_dablooms $(BLDDIR)/testbloom.bin
 	rmdir $(BLDDIR)
 
 .PHONY: all clean help install test libdablooms install_libdablooms
@@ -156,11 +156,11 @@ $(PY_BLDDIR)/pydablooms.so: $(BLDDIR)/libdablooms.a pydablooms/pydablooms.c
 	@$(PY_BLD_ENV) $(PYTHON) pydablooms/setup.py build $(PY_FLAGS) >/dev/null
 
 test_pydablooms: pydablooms
-	@PYTHONPATH=$(PY_BLDDIR) $(PYTHON) pydablooms/test_pydablooms.py $(WORDS)
+	@PYTHONPATH=$(PY_BLDDIR) $(PYTHON) pydablooms/test_pydablooms.py $(BLDDIR)/testbloom_py.bin $(WORDS)
 
 clean: clean_pydablooms
 clean_pydablooms:
-	rm -f $(BLDDIR)/pydablooms.so
+	rm -f $(BLDDIR)/pydablooms.so $(BLDDIR)/testbloom_py.bin
 	$(PYTHON) pydablooms/setup.py clean $(PY_FLAGS)
 
 .PHONY: pydablooms install_pydablooms test_pydablooms clean_pydablooms
