@@ -193,20 +193,16 @@ int bitmap_flush(bitmap_t *bitmap)
  */
 void new_salts(counting_bloom_t *bloom)
 {
-    int div = bloom->nfuncs / 4;
-    int mod = bloom->nfuncs % 4;
     int i;
-    
-    if (mod) {
-        div += 1;
-    }
-    bloom->num_salts = div;
-    bloom->salts = calloc(div, sizeof(uint32_t));
     uint32_t key_data = 0xba11742c;
     uint32_t seed = 0xd5702acb;
-    for (i = 0; i < div; i += 4) {
+    bloom->salts = calloc(bloom->num_salts, sizeof(uint32_t));
+    for (i = 0; i < bloom->num_salts; i += 4) {
         unsigned char checksum[16];
-        int salts_to_copy = div - i > 4 ? 4 : div - i;
+        int salts_to_copy = bloom->num_salts - i;
+        if (salts_to_copy > 4) {
+            salts_to_copy = 4;
+        }
         key_data = key_data ^ i;
         MurmurHash3_x64_128(&key_data, sizeof(key_data), seed, &checksum);
         memcpy(bloom->salts + i, &checksum, salts_to_copy * sizeof(uint32_t));
@@ -221,24 +217,23 @@ void new_salts(counting_bloom_t *bloom)
  * allocated. From this 128-bit hash, we get 4 32-bit hashes
  * with our target size; we need to wrap them around
  * individually.
+ *
+ * We rounded up the allocation of bloom->hashes to a multiple of 4
+ * so we can always do 4 at a time.
  */
 void hash_func(counting_bloom_t *bloom, const char *key, size_t key_len, uint32_t *hashes)
 {
-    int i, j, hash_cnt;
-    uint32_t hash;
-    hash_cnt = 0;
+    int i;
+    size_t hash_cnt = 0;
     
     for (i = 0; i < bloom->num_salts; i++) {
-        unsigned char checksum[16];
-        MurmurHash3_x64_128(key, key_len, bloom->salts[i], &checksum);
-        for (j = 0; j < sizeof(checksum); j += 4) {
-            if (hash_cnt >= (bloom->nfuncs)) {
-                break;
-            }
-            hash = *(uint32_t *)(checksum + j);
-            hashes[hash_cnt] = hash % bloom->counts_per_func;
-            hash_cnt++;
-        }
+        uint32_t checksum[4];
+        MurmurHash3_x64_128(key, key_len, bloom->salts[i], checksum);
+        hashes[hash_cnt + 0] = checksum[0] % bloom->counts_per_func;
+        hashes[hash_cnt + 1] = checksum[1] % bloom->counts_per_func;
+        hashes[hash_cnt + 2] = checksum[2] % bloom->counts_per_func;
+        hashes[hash_cnt + 3] = checksum[3] % bloom->counts_per_func;
+        hash_cnt += 4;
     }
 }
 
@@ -281,8 +276,12 @@ counting_bloom_t *counting_bloom_init(unsigned int capacity, double error_rate,
     bloom->nfuncs = (int) ceil(log(1 / error_rate) / log(2));
     bloom->counts_per_func = (int) ceil(capacity * fabs(log(error_rate)) / (bloom->nfuncs * pow(log(2), 2)));
     bloom->size = ceil(bloom->nfuncs * bloom->counts_per_func);
-    bloom->num_bytes = ((bloom->size + 1) / 2) + HEADER_BYTES; /* "+1" causes a rounding-up integer "/2" */
-    bloom->hashes = calloc(bloom->nfuncs, sizeof(uint32_t));
+    /* rounding-up integer divide by 2 of bloom->size */
+    bloom->num_bytes = ((bloom->size + 1) / 2) + HEADER_BYTES;
+    /* rounding-up integer divide by 4 of bloom->nfuncs */
+    bloom->num_salts = (bloom->nfuncs + 3) / 4;
+    /* effectively bloom->nfuncs rounded up to a multiple of 4 */
+    bloom->hashes = calloc(bloom->num_salts * 4, sizeof(uint32_t));
     new_salts(bloom);
     
     return bloom;
