@@ -44,18 +44,10 @@ bitmap_t *bitmap_resize(bitmap_t *bitmap, size_t old_size, size_t new_size)
     fstat(fd, &fileStat);
     size_t size = fileStat.st_size;
     
-    /* Write something to the end of the file to insure allocated the space */
-    if (size == old_size) {
-        for (; size < new_size; size++) {
-            if (lseek(fd, size, SEEK_SET) < 0) {
-                perror("Error, calling lseek() to set file size");
-                free_bitmap(bitmap);
-                close(fd);
-                return NULL;
-            }
-        }
-        if (write(fd, "", 1) < 0) {
-            perror("Error, writing last byte of the file");
+    /* grow file if necessary */
+    if (size < new_size) {
+        if (ftruncate(fd, new_size) < 0) {
+            perror("Error increasing file size with ftruncate");
             free_bitmap(bitmap);
             close(fd);
             return NULL;
