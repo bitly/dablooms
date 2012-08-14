@@ -36,8 +36,8 @@ typedef struct {
     unsigned int offset;
     unsigned int counts_per_func;
     unsigned int num_salts;
-    unsigned char *salts;
-    unsigned int *hashes;
+    uint32_t *hashes;
+    uint32_t *salts;
     size_t nfuncs;
     size_t size;
     size_t num_bytes;

@@ -61,7 +61,7 @@ ifeq ($(UNAME),Darwin)
 	SO_EXT = $(SO_VER).$(SO_NAME)
 endif
 
-SRCS_LIBDABLOOMS = md5.c dablooms.c
+SRCS_LIBDABLOOMS = dablooms.c murmur.c
 SRCS_TESTS = test_dablooms.c
 WORDS = /usr/share/dict/words
 OBJS_LIBDABLOOMS = $(patsubst %.c, $(BLDDIR)/%.o, $(SRCS_LIBDABLOOMS))

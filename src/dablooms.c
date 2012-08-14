@@ -12,14 +12,13 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "md5.h"
+#include "murmur.h"
 #include "dablooms.h"
 
 #define DABLOOMS_VERSION "0.8.2"
 
 #define HEADER_BYTES (2*sizeof(uint32_t))
 #define SCALE_HEADER_BYTES (3*sizeof(uint64_t))
-#define SALT_SIZE 16
 #define ERROR_TIGHTENING_RATIO .7
 
 const char *dablooms_version(void)
@@ -177,9 +176,20 @@ int bitmap_flush(bitmap_t *bitmap)
     }
 }
 
-/* Each function has a unique salt, so we need at least nfuncs salts.
- * An MD5 hash is 16 bytes long, and each salt only needds to be 4 bytes
- * Thus we can proportion 4 salts per each md5 hash we create as a salt.
+/*
+ * Build a predictable set of salts for the bloom filter's "functions"
+ *
+ * With Murmur3_128, we turn a key and a 4-byte salt into a 16 bytes
+ * hash; this hash can be split in four 4-byte hashes, and each of
+ * the four is used as one of the bloom filter's "functions"
+ *
+ * Hence if we require `nfunc` 4-byte hashes, we need to generate
+ * `nfunc` / 4 different salts (rounded up). With Murmur3_128, we
+ * can generate four 4-byte salts at a time.
+ *
+ * We build these salts incrementally. The intitial salt is a function
+ * of a predefined root; consequent salts are chained on top of the
+ * first one using the same seed but xor'ed with the salt index.
  */
 void new_salts(counting_bloom_t *bloom)
 {
@@ -191,34 +201,36 @@ void new_salts(counting_bloom_t *bloom)
         div += 1;
     }
     bloom->num_salts = div;
-    bloom->salts = calloc(div, SALT_SIZE);
-    for (i = 0; i < div; i++) {
-        struct cvs_MD5Context context;
+    bloom->salts = calloc(div, sizeof(uint32_t));
+    uint32_t key_data = 0xba11742c;
+    uint32_t seed = 0xd5702acb;
+    for (i = 0; i < div; i += 4) {
         unsigned char checksum[16];
-        cvs_MD5Init (&context);
-        cvs_MD5Update (&context, (unsigned char *) &i, sizeof(int));
-        cvs_MD5Final (checksum, &context);
-        memcpy(bloom->salts + i * SALT_SIZE, &checksum, SALT_SIZE);
+        int salts_to_copy = div - i > 4 ? 4 : div - i;
+        key_data = key_data ^ i;
+        MurmurHash3_x64_128(&key_data, sizeof(key_data), seed, &checksum);
+        memcpy(bloom->salts + i, &checksum, salts_to_copy * sizeof(uint32_t));
+        key_data = *(uint32_t *)checksum;
     }
 }
 
-/* We are are using the salts, adding them to the new md5 hash, adding the key,
- * converting said md5 hash to 4 byte indexes
+/*
+ * Perform the actual hashing for `key`
+ *
+ * We get one 128-bit hash for every salt we've previously
+ * allocated. From this 128-bit hash, we get 4 32-bit hashes
+ * with our target size; we need to wrap them around
+ * individually.
  */
-unsigned int *hash_func(counting_bloom_t *bloom, const char *key, unsigned int *hashes)
+void hash_func(counting_bloom_t *bloom, const char *key, uint32_t *hashes)
 {
-
-    int i, j, hash_cnt, hash;
-    unsigned char *salts = bloom->salts;
+    int i, j, hash_cnt;
+    uint32_t hash;
     hash_cnt = 0;
     
     for (i = 0; i < bloom->num_salts; i++) {
-        struct cvs_MD5Context context;
         unsigned char checksum[16];
-        cvs_MD5Init(&context);
-        cvs_MD5Update(&context, salts + i * SALT_SIZE, SALT_SIZE);
-        cvs_MD5Update(&context, (unsigned char *)key, strlen(key));
-        cvs_MD5Final(checksum, &context);
+        MurmurHash3_x64_128(key, strlen(key), bloom->salts[i], &checksum);
         for (j = 0; j < sizeof(checksum); j += 4) {
             if (hash_cnt >= (bloom->nfuncs)) {
                 break;
@@ -228,7 +240,6 @@ unsigned int *hash_func(counting_bloom_t *bloom, const char *key, unsigned int *
             hash_cnt++;
         }
     }
-    return hashes;
 }
 
 int free_counting_bloom(counting_bloom_t *bloom)
@@ -271,7 +282,7 @@ counting_bloom_t *counting_bloom_init(unsigned int capacity, double error_rate,
     bloom->counts_per_func = (int) ceil(capacity * fabs(log(error_rate)) / (bloom->nfuncs * pow(log(2), 2)));
     bloom->size = ceil(bloom->nfuncs * bloom->counts_per_func);
     bloom->num_bytes = ((bloom->size + 1) / 2) + HEADER_BYTES; /* "+1" causes a rounding-up integer "/2" */
-    bloom->hashes = calloc(bloom->nfuncs, sizeof(unsigned int));
+    bloom->hashes = calloc(bloom->nfuncs, sizeof(uint32_t));
     new_salts(bloom);
     
     return bloom;
