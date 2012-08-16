@@ -34,14 +34,14 @@ static int Dablooms_init(Dablooms *self, PyObject *args, PyObject *kwds)
     const char *filepath;
     unsigned int capacity;
     int id;
-    static char *kwlist[] = {"capacity", "error_rate", "filepath", "id", NULL};
+    static char *kwlist[] = {"capacity", "error_rate", "filepath", NULL};
     
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|idsi", kwlist,
-                                      &capacity, &error_rate, &filepath, &id)) {
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|ids", kwlist,
+                                      &capacity, &error_rate, &filepath)) {
         return -1;
     }
     
-    self->filter = new_scaling_bloom(capacity, error_rate, filepath, id);
+    self->filter = new_scaling_bloom(capacity, error_rate, filepath);
     
     return 0;
 }

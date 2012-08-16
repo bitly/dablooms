@@ -70,7 +70,7 @@ typedef struct {
     bitmap_t *bitmap;
 } scaling_bloom_t;
 
-scaling_bloom_t *new_scaling_bloom(unsigned int capacity, double error_rate, const char *filename, uint32_t id);
+scaling_bloom_t *new_scaling_bloom(unsigned int capacity, double error_rate, const char *filename);
 scaling_bloom_t *new_scaling_bloom_from_file(unsigned int capacity, double error_rate, const char *filename);
 int free_scaling_bloom(scaling_bloom_t *bloom);
 int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, size_t len, uint32_t id);

@@ -38,7 +38,7 @@ int test_scale(const char * filepath)
         remove(FILEPATH);
     }
     
-    if (!(bloom = new_scaling_bloom(CAPACITY, ERROR_RATE, FILEPATH, 0))) {
+    if (!(bloom = new_scaling_bloom(CAPACITY, ERROR_RATE, FILEPATH))) {
         fprintf(stderr, "ERROR: Could not create bloom filter\n");
         return EXIT_FAILURE;
     }
