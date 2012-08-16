@@ -111,7 +111,7 @@ $(BLDDIR)/libdablooms.a: $(OBJS_LIBDABLOOMS)
 
 $(BLDDIR)/libdablooms.$(SO_EXT): $(OBJS_LIBDABLOOMS)
 	@echo " SO " $@
-	@$(CC) -shared -Wl,$(SO_CMD),libdablooms.$(SO_EXT_MAJOR) -o $@ $^
+	@$(CC) -shared -Wl,$(SO_CMD),libdablooms.$(SO_EXT_MAJOR) -o $@ $^ $(LDLIBS)
 
 $(patsubst %, $(BLDDIR)/%, $(LIB_SYMLNKS)): %: $(BLDDIR)/libdablooms.$(SO_EXT)
 	@echo " SYMLNK " $@
