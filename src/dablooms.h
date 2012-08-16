@@ -36,8 +36,8 @@ typedef struct {
     unsigned int offset;
     unsigned int counts_per_func;
     unsigned int num_salts;
-    unsigned char *salts;
-    unsigned int *hashes;
+    uint32_t *hashes;
+    uint32_t *salts;
     size_t nfuncs;
     size_t size;
     size_t num_bytes;
@@ -48,9 +48,9 @@ typedef struct {
 int free_counting_bloom(counting_bloom_t *bloom);
 counting_bloom_t *new_counting_bloom(unsigned int capacity, double error_rate, const char *filename);
 counting_bloom_t *new_counting_bloom_from_file(unsigned int capacity, double error_rate, const char *filename);
-int counting_bloom_add(counting_bloom_t *bloom, const char *s);
-int counting_bloom_remove(counting_bloom_t *bloom, const char *s);
-int counting_bloom_check(counting_bloom_t *bloom, const char *s);
+int counting_bloom_add(counting_bloom_t *bloom, const char *s, size_t len);
+int counting_bloom_remove(counting_bloom_t *bloom, const char *s, size_t len);
+int counting_bloom_check(counting_bloom_t *bloom, const char *s, size_t len);
 
 
 typedef struct {
@@ -73,8 +73,8 @@ typedef struct {
 scaling_bloom_t *new_scaling_bloom(unsigned int capacity, double error_rate, const char *filename, uint32_t id);
 scaling_bloom_t *new_scaling_bloom_from_file(unsigned int capacity, double error_rate, const char *filename);
 int free_scaling_bloom(scaling_bloom_t *bloom);
-int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, uint32_t id);
-int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, uint32_t id);
-int scaling_bloom_check(scaling_bloom_t *bloom, const char *s);
+int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, size_t len, uint32_t id);
+int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, size_t len, uint32_t id);
+int scaling_bloom_check(scaling_bloom_t *bloom, const char *s, size_t len);
 int scaling_bloom_flush(scaling_bloom_t *bloom);
 #endif

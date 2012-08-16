@@ -49,37 +49,39 @@ static int Dablooms_init(Dablooms *self, PyObject *args, PyObject *kwds)
 static PyObject *check(Dablooms *self, PyObject *args)
 {
     const char *hash;
-    if (!PyArg_ParseTuple(args, "s", &hash)) {
+    int len;
+    
+    if (!PyArg_ParseTuple(args, "s#", &hash, &len)) {
         return NULL;
     }
-    return Py_BuildValue("i", scaling_bloom_check(self->filter, hash));
+    return Py_BuildValue("i", scaling_bloom_check(self->filter, hash, len));
 }
 
 static PyObject *add(Dablooms *self, PyObject *args, PyObject *kwds)
 {
     const char *hash;
-    int id;
+    int id, len;
     
     static char *kwlist[] = {"hash", "id", NULL};
     
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|si", kwlist, &hash, &id)) {
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|s#i", kwlist, &hash, &len, &id)) {
         return NULL;
     }
     
-    return Py_BuildValue("i", scaling_bloom_add(self->filter, hash, id));
+    return Py_BuildValue("i", scaling_bloom_add(self->filter, hash, len, id));
 }
 
 static PyObject *delete(Dablooms *self, PyObject *args, PyObject *kwds)
 {
     const char *hash;
-    int id;
+    int id, len;
     static char *kwlist[] = {"hash", "id", NULL};
     
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|si", kwlist, &hash, &id)) {
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|s#i", kwlist, &hash, &len, &id)) {
         return NULL;
     }
     
-    return Py_BuildValue("i", scaling_bloom_remove(self->filter, hash, id));
+    return Py_BuildValue("i", scaling_bloom_remove(self->filter, hash, len, id));
 }
 
 static PyObject *flush(Dablooms *self, PyObject *args, PyObject *kwds)

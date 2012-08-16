@@ -12,14 +12,13 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "md5.h"
+#include "murmur.h"
 #include "dablooms.h"
 
 #define DABLOOMS_VERSION "0.8.2"
 
 #define HEADER_BYTES (2*sizeof(uint32_t))
 #define SCALE_HEADER_BYTES (3*sizeof(uint64_t))
-#define SALT_SIZE 16
 #define ERROR_TIGHTENING_RATIO .7
 
 const char *dablooms_version(void)
@@ -44,18 +43,10 @@ bitmap_t *bitmap_resize(bitmap_t *bitmap, size_t old_size, size_t new_size)
     fstat(fd, &fileStat);
     size_t size = fileStat.st_size;
     
-    /* Write something to the end of the file to insure allocated the space */
-    if (size == old_size) {
-        for (; size < new_size; size++) {
-            if (lseek(fd, size, SEEK_SET) < 0) {
-                perror("Error, calling lseek() to set file size");
-                free_bitmap(bitmap);
-                close(fd);
-                return NULL;
-            }
-        }
-        if (write(fd, "", 1) < 0) {
-            perror("Error, writing last byte of the file");
+    /* grow file if necessary */
+    if (size < new_size) {
+        if (ftruncate(fd, new_size) < 0) {
+            perror("Error increasing file size with ftruncate");
             free_bitmap(bitmap);
             close(fd);
             return NULL;
@@ -185,58 +176,65 @@ int bitmap_flush(bitmap_t *bitmap)
     }
 }
 
-/* Each function has a unique salt, so we need at least nfuncs salts.
- * An MD5 hash is 16 bytes long, and each salt only needds to be 4 bytes
- * Thus we can proportion 4 salts per each md5 hash we create as a salt.
+/*
+ * Build a predictable set of salts for the bloom filter's "functions"
+ *
+ * With Murmur3_128, we turn a key and a 4-byte salt into a 16 bytes
+ * hash; this hash can be split in four 4-byte hashes, and each of
+ * the four is used as one of the bloom filter's "functions"
+ *
+ * Hence if we require `nfunc` 4-byte hashes, we need to generate
+ * `nfunc` / 4 different salts (rounded up). With Murmur3_128, we
+ * can generate four 4-byte salts at a time.
+ *
+ * We build these salts incrementally. The intitial salt is a function
+ * of a predefined root; consequent salts are chained on top of the
+ * first one using the same seed but xor'ed with the salt index.
  */
 void new_salts(counting_bloom_t *bloom)
 {
-    int div = bloom->nfuncs / 4;
-    int mod = bloom->nfuncs % 4;
     int i;
-    
-    if (mod) {
-        div += 1;
-    }
-    bloom->num_salts = div;
-    bloom->salts = calloc(div, SALT_SIZE);
-    for (i = 0; i < div; i++) {
-        struct cvs_MD5Context context;
+    uint32_t key_data = 0xba11742c;
+    uint32_t seed = 0xd5702acb;
+    bloom->salts = calloc(bloom->num_salts, sizeof(uint32_t));
+    for (i = 0; i < bloom->num_salts; i += 4) {
         unsigned char checksum[16];
-        cvs_MD5Init (&context);
-        cvs_MD5Update (&context, (unsigned char *) &i, sizeof(int));
-        cvs_MD5Final (checksum, &context);
-        memcpy(bloom->salts + i * SALT_SIZE, &checksum, SALT_SIZE);
+        int salts_to_copy = bloom->num_salts - i;
+        if (salts_to_copy > 4) {
+            salts_to_copy = 4;
+        }
+        key_data = key_data ^ i;
+        MurmurHash3_x64_128(&key_data, sizeof(key_data), seed, &checksum);
+        memcpy(bloom->salts + i, &checksum, salts_to_copy * sizeof(uint32_t));
+        key_data = *(uint32_t *)checksum;
     }
 }
 
-/* We are are using the salts, adding them to the new md5 hash, adding the key,
- * converting said md5 hash to 4 byte indexes
+/*
+ * Perform the actual hashing for `key`
+ *
+ * We get one 128-bit hash for every salt we've previously
+ * allocated. From this 128-bit hash, we get 4 32-bit hashes
+ * with our target size; we need to wrap them around
+ * individually.
+ *
+ * We rounded up the allocation of bloom->hashes to a multiple of 4
+ * so we can always do 4 at a time.
  */
-unsigned int *hash_func(counting_bloom_t *bloom, const char *key, unsigned int *hashes)
+void hash_func(counting_bloom_t *bloom, const char *key, size_t key_len, uint32_t *hashes)
 {
-
-    int i, j, hash_cnt, hash;
-    unsigned char *salts = bloom->salts;
-    hash_cnt = 0;
+    int i;
+    size_t hash_cnt = 0;
     
     for (i = 0; i < bloom->num_salts; i++) {
-        struct cvs_MD5Context context;
-        unsigned char checksum[16];
-        cvs_MD5Init(&context);
-        cvs_MD5Update(&context, salts + i * SALT_SIZE, SALT_SIZE);
-        cvs_MD5Update(&context, (unsigned char *)key, strlen(key));
-        cvs_MD5Final(checksum, &context);
-        for (j = 0; j < sizeof(checksum); j += 4) {
-            if (hash_cnt >= (bloom->nfuncs)) {
-                break;
-            }
-            hash = *(uint32_t *)(checksum + j);
-            hashes[hash_cnt] = hash % bloom->counts_per_func;
-            hash_cnt++;
-        }
+        uint32_t checksum[4];
+        MurmurHash3_x64_128(key, key_len, bloom->salts[i], checksum);
+        hashes[hash_cnt + 0] = checksum[0] % bloom->counts_per_func;
+        hashes[hash_cnt + 1] = checksum[1] % bloom->counts_per_func;
+        hashes[hash_cnt + 2] = checksum[2] % bloom->counts_per_func;
+        hashes[hash_cnt + 3] = checksum[3] % bloom->counts_per_func;
+        hash_cnt += 4;
     }
-    return hashes;
 }
 
 int free_counting_bloom(counting_bloom_t *bloom)
@@ -278,8 +276,12 @@ counting_bloom_t *counting_bloom_init(unsigned int capacity, double error_rate,
     bloom->nfuncs = (int) ceil(log(1 / error_rate) / log(2));
     bloom->counts_per_func = (int) ceil(capacity * fabs(log(error_rate)) / (bloom->nfuncs * pow(log(2), 2)));
     bloom->size = ceil(bloom->nfuncs * bloom->counts_per_func);
-    bloom->num_bytes = ((bloom->size + 1) / 2) + HEADER_BYTES; /* "+1" causes a rounding-up integer "/2" */
-    bloom->hashes = calloc(bloom->nfuncs, sizeof(unsigned int));
+    /* rounding-up integer divide by 2 of bloom->size */
+    bloom->num_bytes = ((bloom->size + 1) / 2) + HEADER_BYTES;
+    /* rounding-up integer divide by 4 of bloom->nfuncs */
+    bloom->num_salts = (bloom->nfuncs + 3) / 4;
+    /* effectively bloom->nfuncs rounded up to a multiple of 4 */
+    bloom->hashes = calloc(bloom->num_salts * 4, sizeof(uint32_t));
     new_salts(bloom);
     
     return bloom;
@@ -319,12 +321,12 @@ counting_bloom_t *counting_bloom_from_file(unsigned capacity, double error_rate,
     return cur_bloom;
 }
 
-int counting_bloom_add(counting_bloom_t *bloom, const char *s)
+int counting_bloom_add(counting_bloom_t *bloom, const char *s, size_t len)
 {
     unsigned int index, i, offset;
     unsigned int *hashes = bloom->hashes;
     
-    hash_func(bloom, s, hashes);
+    hash_func(bloom, s, len, hashes);
     
     for (i = 0; i < bloom->nfuncs; i++) {
         offset = i * bloom->counts_per_func;
@@ -336,12 +338,12 @@ int counting_bloom_add(counting_bloom_t *bloom, const char *s)
     return 0;
 }
 
-int counting_bloom_remove(counting_bloom_t *bloom, const char *s)
+int counting_bloom_remove(counting_bloom_t *bloom, const char *s, size_t len)
 {
     unsigned int index, i, offset;
     unsigned int *hashes = bloom->hashes;
     
-    hash_func(bloom, s, hashes);
+    hash_func(bloom, s, len, hashes);
     
     for (i = 0; i < bloom->nfuncs; i++) {
         offset = i * bloom->counts_per_func;
@@ -353,12 +355,12 @@ int counting_bloom_remove(counting_bloom_t *bloom, const char *s)
     return 0;
 }
 
-int counting_bloom_check(counting_bloom_t *bloom, const char *s)
+int counting_bloom_check(counting_bloom_t *bloom, const char *s, size_t len)
 {
     unsigned int index, i, offset;
     unsigned int *hashes = bloom->hashes;
     
-    hash_func(bloom, s, hashes);
+    hash_func(bloom, s, len, hashes);
     
     for (i = 0; i < bloom->nfuncs; i++) {
         offset = i * bloom->counts_per_func;
@@ -426,7 +428,7 @@ counting_bloom_t *new_counting_bloom_from_scale(scaling_bloom_t *bloom, uint32_t
 }
 
 
-int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, uint32_t id)
+int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, size_t len, uint32_t id)
 {
     int i;
     int nblooms = bloom->num_blooms;
@@ -445,14 +447,14 @@ int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, uint32_t id)
     if ((*bloom->header->max_id) < id) {
         (*bloom->header->max_id) = id;
     }
-    counting_bloom_add(cur_bloom, s);
+    counting_bloom_add(cur_bloom, s, len);
     
     (*bloom->header->posseq) ++;
     
     return 1;
 }
 
-int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, uint32_t id)
+int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, size_t len, uint32_t id)
 {
     counting_bloom_t *cur_bloom;
     int id_diff, i;
@@ -462,7 +464,7 @@ int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, uint32_t id)
         id_diff = id - (*cur_bloom->header->id);
         if (id_diff >= 0) {
             (*bloom->header->preseq)++;
-            counting_bloom_remove(cur_bloom, s);
+            counting_bloom_remove(cur_bloom, s, len);
             (*bloom->header->posseq)++;
             return 1;
         }
@@ -470,13 +472,13 @@ int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, uint32_t id)
     return 0;
 }
 
-int scaling_bloom_check(scaling_bloom_t *bloom, const char *s)
+int scaling_bloom_check(scaling_bloom_t *bloom, const char *s, size_t len)
 {
     int i;
     counting_bloom_t *cur_bloom;
     for (i = bloom->num_blooms - 1; i >= 0; i--) {
         cur_bloom = bloom->blooms[i];
-        if (counting_bloom_check(cur_bloom, s)) {
+        if (counting_bloom_check(cur_bloom, s, len)) {
             return 1;
         }
     }
