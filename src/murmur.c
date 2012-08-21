@@ -9,7 +9,7 @@
 
 #include "murmur.h"
 
-#define	FORCE_INLINE __attribute__((always_inline))
+#define	FORCE_INLINE inline static
 
 FORCE_INLINE uint64_t rotl64 ( uint64_t x, int8_t r )
 {
