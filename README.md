@@ -42,15 +42,14 @@ determine if a filter is clean or dirty and make an appropriate decision.
 The counters also provide a means for us to identify a position
 at which the bloom filter is valid in order to replay operations to "catch up" to a current state.
 
-Also included is a wrapper to easily leverage the library in Python.
+Also included are client libraries for Python and Go.
 
-### Example
+### Python Example
     
     >>> import pydablooms
     >>> bloom = pydablooms.Dablooms(capacity=1000,
     ...                            error_rate=.05,
-    ...                            filepath='/tmp/bloom.bin',
-    ...                            id=1)
+    ...                            filepath='/tmp/bloom.bin')
     >>> bloom.add('foo', 2)
     1
     >>> bloom.check('bar')
