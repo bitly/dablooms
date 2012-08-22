@@ -11,7 +11,7 @@ func TestPutMessage(t *testing.T) {
 	log.SetOutput(ioutil.Discard)
 	defer log.SetOutput(os.Stdout)
 
-	sb := NewScalingBloom(1000, 0.5, "/tmp/dablooms.bin")
+	sb := NewScalingBloom(1000, 0.5, "testbloom.bin")
 	if sb == nil {
 		t.Fatalf("NewScalingBloom failed")
 	}
