@@ -182,6 +182,9 @@ int bitmap_flush(bitmap_t *bitmap)
  *
  * Only call the hash once to get a pair of initial values (h1 and
  * h2). Use these values to generate all hashes in a quick loop. 
+ *
+ * See paper by Kirsch, Mitzenmacher [2006]
+ * http://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf
  */
 void hash_func(counting_bloom_t *bloom, const char *key, size_t key_len, uint32_t *hashes)
 {
