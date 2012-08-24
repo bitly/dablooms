@@ -33,7 +33,6 @@ static int Dablooms_init(Dablooms *self, PyObject *args, PyObject *kwds)
     double error_rate;
     const char *filepath;
     unsigned int capacity;
-    int id;
     static char *kwlist[] = {"capacity", "error_rate", "filepath", NULL};
     
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "|ids", kwlist,
@@ -60,11 +59,11 @@ static PyObject *check(Dablooms *self, PyObject *args)
 static PyObject *add(Dablooms *self, PyObject *args, PyObject *kwds)
 {
     const char *hash;
-    int id, len;
-    
+    int len;
+    unsigned long long id;
     static char *kwlist[] = {"hash", "id", NULL};
     
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|s#i", kwlist, &hash, &len, &id)) {
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|s#K", kwlist, &hash, &len, &id)) {
         return NULL;
     }
     
@@ -74,10 +73,11 @@ static PyObject *add(Dablooms *self, PyObject *args, PyObject *kwds)
 static PyObject *delete(Dablooms *self, PyObject *args, PyObject *kwds)
 {
     const char *hash;
-    int id, len;
+    int len;
+    unsigned long long id;
     static char *kwlist[] = {"hash", "id", NULL};
     
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|s#i", kwlist, &hash, &len, &id)) {
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|s#K", kwlist, &hash, &len, &id)) {
         return NULL;
     }
     

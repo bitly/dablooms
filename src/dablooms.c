@@ -210,8 +210,7 @@ int free_counting_bloom(counting_bloom_t *bloom)
     return 0;
 }
 
-counting_bloom_t *counting_bloom_init(unsigned int capacity, double error_rate,
-                                      unsigned int offset, uint32_t id, unsigned int count)
+counting_bloom_t *counting_bloom_init(unsigned int capacity, double error_rate, unsigned int offset)
 {
     counting_bloom_t *bloom;
     
@@ -244,7 +243,7 @@ counting_bloom_t *new_counting_bloom(unsigned int capacity, double error_rate, c
         return NULL;
     }
     
-    cur_bloom = counting_bloom_init(capacity, error_rate, 0, 0, 0);
+    cur_bloom = counting_bloom_init(capacity, error_rate, 0);
     cur_bloom->parent_bitmap = new_bitmap(fd, cur_bloom->num_bytes);
     
     return cur_bloom;
@@ -261,7 +260,7 @@ counting_bloom_t *counting_bloom_from_file(unsigned capacity, double error_rate,
         return NULL;
     }
     
-    cur_bloom = counting_bloom_init(capacity, error_rate, 0, 0, 0);
+    cur_bloom = counting_bloom_init(capacity, error_rate, 0);
     cur_bloom->parent_bitmap = new_bitmap(fd, cur_bloom->num_bytes);
     
     return cur_bloom;
@@ -331,7 +330,7 @@ int free_scaling_bloom(scaling_bloom_t *bloom)
 }
 
 /* creates a new counting bloom filter from a given scaling bloom filter, with count and id */
-counting_bloom_t *new_counting_bloom_from_scale(scaling_bloom_t *bloom, uint32_t id, unsigned int count)
+counting_bloom_t *new_counting_bloom_from_scale(scaling_bloom_t *bloom, uint64_t id, unsigned int count)
 {
     int i, offset;
     double error_rate;
@@ -344,7 +343,7 @@ counting_bloom_t *new_counting_bloom_from_scale(scaling_bloom_t *bloom, uint32_t
         return NULL;
     }
     
-    cur_bloom = counting_bloom_init(bloom->capacity, error_rate, bloom->num_bytes, id, 0);
+    cur_bloom = counting_bloom_init(bloom->capacity, error_rate, bloom->num_bytes);
     bloom->blooms[bloom->num_blooms] = cur_bloom;
     
     bloom->bitmap = bitmap_resize(bloom->bitmap, bloom->num_bytes, bloom->num_bytes + cur_bloom->num_bytes);
@@ -370,7 +369,7 @@ counting_bloom_t *new_counting_bloom_from_scale(scaling_bloom_t *bloom, uint32_t
 }
 
 
-int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, size_t len, uint32_t id)
+int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, size_t len, uint64_t id)
 {
     int i;
     counting_bloom_t *cur_bloom = NULL;
@@ -395,15 +394,14 @@ int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, size_t len, uint32_
     return 1;
 }
 
-int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, size_t len, uint32_t id)
+int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, size_t len, uint64_t id)
 {
     counting_bloom_t *cur_bloom;
-    int id_diff, i;
+    int i;
     
     for (i = bloom->num_blooms - 1; i >= 0; i--) {
         cur_bloom = bloom->blooms[i];
-        id_diff = id - cur_bloom->header->id;
-        if (id_diff >= 0) {
+        if (id >= cur_bloom->header->id) {
             bloom->header->preseq++;
             counting_bloom_remove(cur_bloom, s, len);
             bloom->header->posseq++;
@@ -483,7 +481,7 @@ scaling_bloom_t *new_scaling_bloom_from_file(unsigned int capacity, double error
 {
     int fd;
     off_t size;
-    uint32_t id;
+    uint64_t id;
     unsigned int count, offset;
     
     scaling_bloom_t *bloom;

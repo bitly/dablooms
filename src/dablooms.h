@@ -25,8 +25,9 @@ int bitmap_flush(bitmap_t *bitmap);
 void free_bitmap(bitmap_t *bitmap);
 
 typedef struct {
+    uint64_t id;
     uint32_t count;
-    uint32_t id;
+    uint32_t _pad;
 } counting_bloom_header_t;
 
 
@@ -71,8 +72,8 @@ typedef struct {
 scaling_bloom_t *new_scaling_bloom(unsigned int capacity, double error_rate, const char *filename);
 scaling_bloom_t *new_scaling_bloom_from_file(unsigned int capacity, double error_rate, const char *filename);
 int free_scaling_bloom(scaling_bloom_t *bloom);
-int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, size_t len, uint32_t id);
-int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, size_t len, uint32_t id);
+int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, size_t len, uint64_t id);
+int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, size_t len, uint64_t id);
 int scaling_bloom_check(scaling_bloom_t *bloom, const char *s, size_t len);
 int scaling_bloom_flush(scaling_bloom_t *bloom);
 #endif
