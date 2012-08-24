@@ -42,47 +42,32 @@ determine if a filter is clean or dirty and make an appropriate decision.
 The counters also provide a means for us to identify a position
 at which the bloom filter is valid in order to replay operations to "catch up" to a current state.
 
-Also included are client libraries for Python and Go.
-
-### Python Example
-    
-    >>> import pydablooms
-    >>> bloom = pydablooms.Dablooms(capacity=1000,
-    ...                            error_rate=.05,
-    ...                            filepath='/tmp/bloom.bin')
-    >>> bloom.add('foo', 2)
-    1
-    >>> bloom.check('bar')
-    0
-    >>> bloom.delete('foo', 2)
-    0
-    >>> bloom.check('foo')
-    0
-
 ### Installing
-After you have cloned the repo, type `make`, `make install` (`sudo` maybe needed).
+After you have cloned the repo, type `make`, `make install` (`sudo` may be needed).
+This will only install static and dynamic versions of the C dablooms library "libdablooms".
 
-To use a specific version of Python, build directory, or destination
-directory, use the `PYTHON`, `BLDDIR`, and `DESTDIR`, respectively.
-Look at the output of `make help` for more options.
+To use a specific build directory, install prefix, or destination directory for packaging,
+specify `BLDDIR`, `PREFIX`, or `DESTDIR` to make.
 
-An example build might be `make install PYTHON=python2.7 BLDDIR=/tmp/dablooms/bld DESTDIR=/tmp/dablooms/pkg`
+Look at the output of `make help` for more options and targets.
 
-##### godablooms
-For the Go package you can install outside of `make` via:
+An example use of BLDDIR, PREFIX, and DESTDIR might be:
+`make install BLDDIR=/tmp/dablooms/bld DESTDIR=/tmp/dablooms/pkg PREFIX=/usr`
 
-    $ go get github.com/bitly/dablooms/godablooms
+Also available are bindings for various other languages:
 
-However, we recommend using [go-install-as](https://github.com/mreiferson/go-install-as):
+#### Python (pydablooms)
+To install the Python bindings "pydablooms" (currently only compatibly with python 2.x)
+run `make pydablooms`, `make install_pydablooms` (`sudo` may be needed).
 
-    $ go tool install_as --import-as=bitly/dablooms
+To use and install for a specific version of Python installed on your system,
+use the `PYTHON` option to make. For example: `make install_pydablooms PYTHON=python2.7`
 
-To run tests:
+See pydablooms/README.md for more info.
 
-    $ go test
-
-NOTE: the Go package (and libdablooms) are not inherently thread safe, this is the 
-clients responsibility.
+#### Go (godablooms)
+The Go bindings "godablooms" are not integrated into the Makefile. Install libdablooms
+first, then look at `godablooms/README.md`
 
 ### Contributing
 If you make changes to C portions of dablooms which you would like merged into the
@@ -95,19 +80,25 @@ following options:
            --align-pointer=name --align-reference=name --pad-oper -n     <files>
 
 ### Testing
-To run a quick and dirty test, type `make test`.  This test files uses `dict\words`
+To run a quick and dirty test, type `make test`. This test uses a list of words
 and defaults to `/usr/share/dict/words`. If your path differs, you can use the
 `WORDS` flag to specific its location, such as `make test WORDS=/usr/dict/words`.
 
-This will run a simple test script that iterates through a word
-dictionary and adds each word to dablooms. It iterates again, removing every fifth
+This will run a simple test that iterates through a word list and
+adds each word to dablooms. It iterates again, removing every fifth
 element. Lastly, it saves the file, opens a new filter, and iterates a third time 
 checking the existence of each word. It prints results of the true negatives, 
-false positives, true positives, and false negatives.
+false positives, true positives, and false negatives, and the false positive rate.
 
-The maximum error rate for the filter is, by default, set to .05 (5%) and the
-initial capacity is set to 100k.  Since the dictionary is near 500k, we should
-have created 4 new filters in order to scale to size.
+The false positive rate is calculated by "false positives / (false positivies + true negatives)".
+That is, what rate of real negatives are false positives. This is the interesting
+statistic because the rate of false negatives should always be zero.
+
+The test uses a maximum error rate of .05 (5%) and an initial capacity of 100k. If
+the dictionary is near 500k, we should have created 4 new filters in order to scale to size.
+
+A second test adds every other word in the list, and removes no words, causing each
+used filter to stay at maximum capacity, which is a worse case for accuracy.
 
 Check out the performance yourself, and checkout the size of the resulting file!
 
