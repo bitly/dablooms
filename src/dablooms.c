@@ -368,10 +368,25 @@ counting_bloom_t *new_counting_bloom_from_scale(scaling_bloom_t *bloom, uint64_t
     return cur_bloom;
 }
 
+uint64_t scaling_bloom_clear_seqnums(scaling_bloom_t *bloom)
+{
+    uint64_t seqnum;
+    
+    if (bloom->header->disk_seqnum != 0) {
+        // disk_seqnum cleared on disk before any other changes
+        bloom->header->disk_seqnum = 0;
+        bitmap_flush(bloom->bitmap);
+    }
+    seqnum = bloom->header->mem_seqnum;
+    bloom->header->mem_seqnum = 0;
+    return seqnum;
+}
 
 int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, size_t len, uint64_t id)
 {
     int i;
+    uint64_t seqnum;
+    
     counting_bloom_t *cur_bloom = NULL;
     for (i = bloom->num_blooms - 1; i >= 0; i--) {
         cur_bloom = bloom->blooms[i];
@@ -379,7 +394,8 @@ int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, size_t len, uint64_
             break;
         }
     }
-    bloom->header->preseq++;
+    
+    seqnum = scaling_bloom_clear_seqnums(bloom);
     
     if ((id > bloom->header->max_id) && (cur_bloom->header->count >= cur_bloom->capacity - 1)) {
         cur_bloom = new_counting_bloom_from_scale(bloom, bloom->header->max_id + 1, 0);
@@ -389,7 +405,7 @@ int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, size_t len, uint64_
     }
     counting_bloom_add(cur_bloom, s, len);
     
-    bloom->header->posseq++;
+    bloom->header->mem_seqnum = seqnum + 1;
     
     return 1;
 }
@@ -398,13 +414,16 @@ int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, size_t len, uint
 {
     counting_bloom_t *cur_bloom;
     int i;
+    uint64_t seqnum;
     
     for (i = bloom->num_blooms - 1; i >= 0; i--) {
         cur_bloom = bloom->blooms[i];
         if (id >= cur_bloom->header->id) {
-            bloom->header->preseq++;
+            seqnum = scaling_bloom_clear_seqnums(bloom);
+            
             counting_bloom_remove(cur_bloom, s, len);
-            bloom->header->posseq++;
+            
+            bloom->header->mem_seqnum = seqnum + 1;
             return 1;
         }
     }
@@ -426,7 +445,25 @@ int scaling_bloom_check(scaling_bloom_t *bloom, const char *s, size_t len)
 
 int scaling_bloom_flush(scaling_bloom_t *bloom)
 {
-    return bitmap_flush(bloom->bitmap);
+    if (bitmap_flush(bloom->bitmap) != 0) {
+        return -1;
+    }
+    // all changes written to disk before disk_seqnum set
+    if (bloom->header->disk_seqnum == 0) {
+        bloom->header->disk_seqnum = bloom->header->mem_seqnum;
+        return bitmap_flush(bloom->bitmap);
+    }
+    return 0;
+}
+
+uint64_t scaling_bloom_mem_seqnum(scaling_bloom_t *bloom)
+{
+    return bloom->header->mem_seqnum;
+}
+
+uint64_t scaling_bloom_disk_seqnum(scaling_bloom_t *bloom)
+{
+    return bloom->header->disk_seqnum;
 }
 
 scaling_bloom_t *scaling_bloom_init(unsigned int capacity, double error_rate, const char *filename, int fd)
@@ -474,6 +511,7 @@ scaling_bloom_t *new_scaling_bloom(unsigned int capacity, double error_rate, con
         return NULL;
     }
     
+    bloom->header->mem_seqnum = 1;
     return bloom;
 }
 

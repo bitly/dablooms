@@ -51,11 +51,10 @@ int counting_bloom_add(counting_bloom_t *bloom, const char *s, size_t len);
 int counting_bloom_remove(counting_bloom_t *bloom, const char *s, size_t len);
 int counting_bloom_check(counting_bloom_t *bloom, const char *s, size_t len);
 
-
 typedef struct {
-    uint64_t preseq;
-    uint64_t posseq;
     uint64_t max_id;
+    uint64_t mem_seqnum;
+    uint64_t disk_seqnum;
 } scaling_bloom_header_t;
 
 typedef struct {
@@ -76,4 +75,6 @@ int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, size_t len, uint64_
 int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, size_t len, uint64_t id);
 int scaling_bloom_check(scaling_bloom_t *bloom, const char *s, size_t len);
 int scaling_bloom_flush(scaling_bloom_t *bloom);
+uint64_t scaling_bloom_mem_seqnum(scaling_bloom_t *bloom);
+uint64_t scaling_bloom_disk_seqnum(scaling_bloom_t *bloom);
 #endif

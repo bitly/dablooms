@@ -89,14 +89,14 @@ static PyObject *flush(Dablooms *self, PyObject *args, PyObject *kwds)
     return Py_BuildValue("i", scaling_bloom_flush(self->filter));
 }
 
-static PyObject *pre_seqnum(Dablooms *self, PyObject *args, PyObject *kwds)
+static PyObject *mem_seqnum(Dablooms *self, PyObject *args, PyObject *kwds)
 {
-    return Py_BuildValue("l", self->filter->header->preseq);
+    return Py_BuildValue("K", scaling_bloom_mem_seqnum(self->filter));
 }
 
-static PyObject *post_seqnum(Dablooms *self, PyObject *args, PyObject *kwds)
+static PyObject *disk_seqnum(Dablooms *self, PyObject *args, PyObject *kwds)
 {
-    return Py_BuildValue("l", self->filter->header->posseq);
+    return Py_BuildValue("K", scaling_bloom_disk_seqnum(self->filter));
 }
 
 static PyMethodDef Dablooms_methods[] = {
@@ -104,8 +104,8 @@ static PyMethodDef Dablooms_methods[] = {
     {"delete",      (PyCFunction)delete,      METH_VARARGS | METH_KEYWORDS, "Remove an element from the bloom filter."},
     {"check",       (PyCFunction)check,       METH_VARARGS | METH_KEYWORDS, "Check if an element is in the bloom filter."},
     {"flush",       (PyCFunction)flush,       METH_VARARGS | METH_KEYWORDS, "Flush a bloom filter to file."},
-    {"pre_seqnum",  (PyCFunction)pre_seqnum,  METH_VARARGS | METH_KEYWORDS, "Get the pre-sequence number."},
-    {"post_seqnum", (PyCFunction)post_seqnum, METH_VARARGS | METH_KEYWORDS, "Get the post-sequence number."},
+    {"mem_seqnum",  (PyCFunction)mem_seqnum,  METH_VARARGS | METH_KEYWORDS, "Get the memory-consistent sequence number."},
+    {"disk_seqnum", (PyCFunction)disk_seqnum, METH_VARARGS | METH_KEYWORDS, "Get the disk-consistent sequence number."},
     {NULL},       /* Sentinel */
 };
 
