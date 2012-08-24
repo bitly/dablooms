@@ -7,12 +7,17 @@
 
 #include "dablooms.h"
 
-#define FILEPATH "/tmp/bloom.bin"
 #define CAPACITY 100000
 #define ERROR_RATE .05
 
+struct stats {
+    int true_positives;
+    int true_negatives;
+    int false_positives;
+    int false_negatives;
+};
 
-void chomp_line(char *word)
+static void chomp_line(char *word)
 {
     char *p;
     if ((p = strchr(word, '\r'))) {
@@ -23,27 +28,72 @@ void chomp_line(char *word)
     }
 }
 
-int test_scale(const char * filepath)
+static void print_results(struct stats *stats)
 {
-    FILE *fp, *file;
+    float false_positive_rate = (float)stats->false_positives /
+                                (stats->false_positives + stats->true_negatives);
+                                
+    printf("True positives:     %7d"   "\n"
+           "True negatives:     %7d"   "\n"
+           "False positives:    %7d"   "\n"
+           "False negatives:    %7d"   "\n"
+           "False positive rate: %.4f" "\n",
+           stats->true_positives,
+           stats->true_negatives,
+           stats->false_positives,
+           stats->false_negatives,
+           false_positive_rate             );
+           
+    if (stats->false_negatives > 0) {
+        printf("TEST FAIL (false negatives exist)\n");
+    } else if (false_positive_rate > ERROR_RATE) {
+        printf("TEST FAIL (false positive rate too high)\n");
+    } else {
+        printf("TEST PASS\n");
+    }
+}
+
+static void bloom_check_and_score(scaling_bloom_t *bloom, const char *key,
+                                  int should_positive, struct stats *stats)
+{
+    int positive = scaling_bloom_check(bloom, key, strlen(key));
+    if (should_positive) {
+        if (positive) {
+            stats->true_positives++;
+        } else {
+            stats->false_negatives++;
+            fprintf(stderr, "ERROR: False negative: '%s'\n", key);
+        }
+    } else {
+        if (positive) {
+            stats->false_positives++;
+        } else {
+            stats->true_negatives++;
+        }
+    }
+}
+
+int test_remove_reopen(const char *bloom_file, const char *words_file)
+{
+    FILE *fp;
     char word[256];
     scaling_bloom_t *bloom;
-    float false_positive_rate;
-    int i, exists;
-    int true_positives = 0, true_negatives = 0,
-        false_positives = 0, false_negatives = 0;
+    int i, key_removed;
+    struct stats results = { 0 };
     
-    if ((file = fopen(FILEPATH, "r"))) {
-        fclose(file);
-        remove(FILEPATH);
+    printf("\n* test remove & reopen\n");
+    
+    if ((fp = fopen(bloom_file, "r"))) {
+        fclose(fp);
+        remove(bloom_file);
     }
     
-    if (!(bloom = new_scaling_bloom(CAPACITY, ERROR_RATE, FILEPATH))) {
+    if (!(bloom = new_scaling_bloom(CAPACITY, ERROR_RATE, bloom_file))) {
         fprintf(stderr, "ERROR: Could not create bloom filter\n");
         return EXIT_FAILURE;
     }
     
-    if (!(fp = fopen(filepath, "r"))) {
+    if (!(fp = fopen(words_file, "r"))) {
         fprintf(stderr, "ERROR: Could not open words file\n");
         return EXIT_FAILURE;
     }
@@ -61,79 +111,98 @@ int test_scale(const char * filepath)
         }
     }
     
-    
     bitmap_flush(bloom->bitmap);
     free_scaling_bloom(bloom);
     
-    bloom = new_scaling_bloom_from_file(CAPACITY, ERROR_RATE, FILEPATH);
+    bloom = new_scaling_bloom_from_file(CAPACITY, ERROR_RATE, bloom_file);
     
     fseek(fp, 0, SEEK_SET);
     for (i = 0; fgets(word, sizeof(word), fp); i++) {
         chomp_line(word);
-        exists = scaling_bloom_check(bloom, word, strlen(word));
-        if (i % 5 == 0) {
-            /* this element was removed above */
-            if (exists) {
-                false_positives++;
-            } else {
-                true_negatives++;
-            }
-        } else {
-            /* this element should still exist */
-            if (exists) {
-                true_positives++;
-            } else {
-                false_negatives++;
-                fprintf(stderr, "ERROR: False negative: '%s'\n", word);
-            }
-        }
+        key_removed = (i % 5 == 0);
+        bloom_check_and_score(bloom, word, !key_removed, &results);
     }
     fclose(fp);
     
-    false_positive_rate = (float)false_positives / (false_positives + true_negatives);
-    
-    printf(                         "\n"
-           "Elements added:   %6d"  "\n"
-           "Elements removed: %6d"  "\n"
-                                    "\n"
-           "True positives:   %6d"  "\n"
-           "True negatives:   %6d"  "\n"
-           "False positives:  %6d"  "\n"
-           "False negatives:  %6d"  "\n"
-                                    "\n"
-           "False positive rate: %.4f\n"
-           "Total size: %d KiB"     "\n",
-           i, i/5,
-           true_positives, true_negatives,
-           false_positives, false_negatives,
-           false_positive_rate,
-           (int) bloom->num_bytes/1024
-          );
-    
+    printf("Elements added:   %6d" "\n"
+           "Elements removed: %6d" "\n"
+           "Total size: %d KiB"  "\n\n",
+           i, i / 5,
+           (int) bloom->num_bytes / 1024);
+           
     free_scaling_bloom(bloom);
     
-    if (false_negatives > 0) {
-        printf("TEST FAIL (false negatives exist)\n");
-    } else if (false_positive_rate > ERROR_RATE) {
-        printf("TEST FAIL (false positive rate too high)\n");
-    } else {
-        printf("TEST PASS\n");
-    }
-    printf("\n");
+    print_results(&results);
+    return EXIT_SUCCESS;
+}
+
+int test_accuracy(const char *bloom_file, const char *words_file)
+{
+    FILE *fp;
+    char word[256];
+    scaling_bloom_t *bloom;
+    int i;
+    struct stats results = { 0 };
     
+    printf("\n* test accuracy\n");
+    
+    if ((fp = fopen(bloom_file, "r"))) {
+        fclose(fp);
+        remove(bloom_file);
+    }
+    
+    if (!(bloom = new_scaling_bloom(CAPACITY, ERROR_RATE, bloom_file))) {
+        fprintf(stderr, "ERROR: Could not create bloom filter\n");
+        return EXIT_FAILURE;
+    }
+    
+    if (!(fp = fopen(words_file, "r"))) {
+        fprintf(stderr, "ERROR: Could not open words file\n");
+        return EXIT_FAILURE;
+    }
+    
+    for (i = 0; fgets(word, sizeof(word), fp); i++) {
+        if (i % 2 == 0) {
+            chomp_line(word);
+            scaling_bloom_add(bloom, word, strlen(word), i);
+        }
+    }
+    
+    fseek(fp, 0, SEEK_SET);
+    for (i = 0; fgets(word, sizeof(word), fp); i++) {
+        if (i % 2 == 1) {
+            chomp_line(word);
+            bloom_check_and_score(bloom, word, 0, &results);
+        }
+    }
+    
+    fclose(fp);
+    
+    printf("Elements added:   %6d" "\n"
+           "Elements checked: %6d" "\n"
+           "Total size: %d KiB"  "\n\n",
+           (i + 1) / 2, i / 2,
+           (int) bloom->num_bytes / 1024);
+           
+    free_scaling_bloom(bloom);
+    
+    print_results(&results);
     return EXIT_SUCCESS;
 }
 
 int main(int argc, char *argv[])
 {
-    printf("dablooms version: %s\n", dablooms_version());
+    printf("\n** dablooms version: %s\n", dablooms_version());
     
-    /*test_bitmap(); */
-    const char *filepath; 
-    if (argc != 2) {  
-        fprintf(stderr, "Usage: %s <words_file>\n", argv[0]);
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <bloom_file> <words_file>\n", argv[0]);
         return EXIT_FAILURE;
-    } 
-    filepath = argv[1]; 
-    return test_scale(filepath);
+    }
+    if (test_remove_reopen(argv[1], argv[2]) != EXIT_SUCCESS) {
+        return EXIT_FAILURE;
+    }
+    if (test_accuracy(argv[1], argv[2]) != EXIT_SUCCESS) {
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
 }
