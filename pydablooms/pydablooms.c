@@ -91,12 +91,12 @@ static PyObject *flush(Dablooms *self, PyObject *args, PyObject *kwds)
 
 static PyObject *pre_seqnum(Dablooms *self, PyObject *args, PyObject *kwds)
 {
-    return Py_BuildValue("l", *self->filter->header->preseq);
+    return Py_BuildValue("l", self->filter->header->preseq);
 }
 
 static PyObject *post_seqnum(Dablooms *self, PyObject *args, PyObject *kwds)
 {
-    return Py_BuildValue("l", *self->filter->header->posseq);
+    return Py_BuildValue("l", self->filter->header->posseq);
 }
 
 static PyMethodDef Dablooms_methods[] = {

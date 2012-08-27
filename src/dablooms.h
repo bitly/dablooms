@@ -25,8 +25,8 @@ int bitmap_flush(bitmap_t *bitmap);
 void free_bitmap(bitmap_t *bitmap);
 
 typedef struct {
-    uint32_t *count;
-    uint32_t *id;
+    uint32_t count;
+    uint32_t id;
 } counting_bloom_header_t;
 
 
@@ -52,9 +52,9 @@ int counting_bloom_check(counting_bloom_t *bloom, const char *s, size_t len);
 
 
 typedef struct {
-    uint64_t *preseq;
-    uint64_t *posseq;
-    uint64_t *max_id;
+    uint64_t preseq;
+    uint64_t posseq;
+    uint64_t max_id;
 } scaling_bloom_header_t;
 
 typedef struct {

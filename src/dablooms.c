@@ -17,8 +17,6 @@
 
 #define DABLOOMS_VERSION "0.8.2"
 
-#define HEADER_BYTES (2*sizeof(uint32_t))
-#define SCALE_HEADER_BYTES (3*sizeof(uint64_t))
 #define ERROR_TIGHTENING_RATIO .7
 #define SALT_CONSTANT 0x97c29b3a
 
@@ -181,7 +179,7 @@ int bitmap_flush(bitmap_t *bitmap)
  * Perform the actual hashing for `key`
  *
  * Only call the hash once to get a pair of initial values (h1 and
- * h2). Use these values to generate all hashes in a quick loop. 
+ * h2). Use these values to generate all hashes in a quick loop.
  *
  * See paper by Kirsch, Mitzenmacher [2006]
  * http://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf
@@ -190,22 +188,19 @@ void hash_func(counting_bloom_t *bloom, const char *key, size_t key_len, uint32_
 {
     int i;
     uint32_t checksum[4];
-
+    
     MurmurHash3_x64_128(key, key_len, SALT_CONSTANT, checksum);
     uint32_t h1 = checksum[0];
     uint32_t h2 = checksum[1];
-
+    
     for (i = 0; i < bloom->nfuncs; i++) {
-      hashes[i] = (h1 + i * h2) % bloom->counts_per_func;
+        hashes[i] = (h1 + i * h2) % bloom->counts_per_func;
     }
 }
 
 int free_counting_bloom(counting_bloom_t *bloom)
 {
     if (bloom != NULL) {
-        free(bloom->header);
-        bloom->header = NULL;
-        
         free(bloom->hashes);
         bloom->hashes = NULL;
         
@@ -224,19 +219,15 @@ counting_bloom_t *counting_bloom_init(unsigned int capacity, double error_rate,
         fprintf(stderr, "Error, could not realloc a new bloom filter\n");
         return NULL;
     }
-    if ((bloom->header = malloc(sizeof(counting_bloom_header_t))) == NULL) {
-        fprintf(stderr, "Error, could not malloc size for pointers of headers\n");
-        return NULL;
-    }
     bloom->parent_bitmap = NULL;
     bloom->capacity = capacity;
     bloom->error_rate = error_rate;
-    bloom->offset = offset + HEADER_BYTES;
+    bloom->offset = offset + sizeof(counting_bloom_header_t);
     bloom->nfuncs = (int) ceil(log(1 / error_rate) / log(2));
     bloom->counts_per_func = (int) ceil(capacity * fabs(log(error_rate)) / (bloom->nfuncs * pow(log(2), 2)));
     bloom->size = bloom->nfuncs * bloom->counts_per_func;
     /* rounding-up integer divide by 2 of bloom->size */
-    bloom->num_bytes = ((bloom->size + 1) / 2) + HEADER_BYTES;
+    bloom->num_bytes = ((bloom->size + 1) / 2) + sizeof(counting_bloom_header_t);
     bloom->hashes = calloc(bloom->nfuncs, sizeof(uint32_t));
     
     return bloom;
@@ -288,7 +279,7 @@ int counting_bloom_add(counting_bloom_t *bloom, const char *s, size_t len)
         index = hashes[i] + offset;
         bitmap_increment(bloom->parent_bitmap, index, bloom->offset);
     }
-    (*bloom->header->count)++;
+    bloom->header->count++;
     
     return 0;
 }
@@ -305,7 +296,7 @@ int counting_bloom_remove(counting_bloom_t *bloom, const char *s, size_t len)
         index = hashes[i] + offset;
         bitmap_decrement(bloom->parent_bitmap, index, bloom->offset);
     }
-    (*bloom->header->count)--;
+    bloom->header->count--;
     
     return 0;
 }
@@ -334,7 +325,6 @@ int free_scaling_bloom(scaling_bloom_t *bloom)
         free_counting_bloom(*(bloom->blooms + i));
     }
     free(bloom->blooms);
-    free(bloom->header);
     free_bitmap(bloom->bitmap);
     free(bloom);
     return 0;
@@ -359,22 +349,19 @@ counting_bloom_t *new_counting_bloom_from_scale(scaling_bloom_t *bloom, uint32_t
     
     bloom->bitmap = bitmap_resize(bloom->bitmap, bloom->num_bytes, bloom->num_bytes + cur_bloom->num_bytes);
     
-    /* Set these values, as mmap may have moved */
-    bloom->header->preseq = (uint64_t *)(bloom->bitmap->array);
-    bloom->header->posseq = (uint64_t *)(bloom->bitmap->array + sizeof(uint64_t));
-    bloom->header->max_id = (uint64_t *)(bloom->bitmap->array + 2 * sizeof(uint64_t));
+    /* reset header pointer, as mmap may have moved */
+    bloom->header = (scaling_bloom_header_t *) bloom->bitmap->array;
     
     /* Set the pointers for these header structs to the right location since mmap may have moved */
     bloom->num_blooms++;
     for (i = 0; i < bloom->num_blooms; i++) {
-        offset = bloom->blooms[i]->offset - HEADER_BYTES;
-        bloom->blooms[i]->header->id    = (uint32_t *)(bloom->bitmap->array + offset);
-        bloom->blooms[i]->header->count = (uint32_t *)(bloom->bitmap->array + offset + sizeof(uint32_t));
+        offset = bloom->blooms[i]->offset - sizeof(counting_bloom_header_t);
+        bloom->blooms[i]->header = (counting_bloom_header_t *) (bloom->bitmap->array + offset);
     }
     
     /* set the value for the current pointers */
-    *cur_bloom->header->count = count;
-    *cur_bloom->header->id = id;
+    cur_bloom->header->count = count;
+    cur_bloom->header->id = id;
     
     bloom->num_bytes += cur_bloom->num_bytes;
     cur_bloom->parent_bitmap = bloom->bitmap;
@@ -389,21 +376,21 @@ int scaling_bloom_add(scaling_bloom_t *bloom, const char *s, size_t len, uint32_
     counting_bloom_t *cur_bloom = NULL;
     for (i = bloom->num_blooms - 1; i >= 0; i--) {
         cur_bloom = bloom->blooms[i];
-        if (id >= *cur_bloom->header->id) {
+        if (id >= cur_bloom->header->id) {
             break;
         }
     }
-    (*bloom->header->preseq) ++;
+    bloom->header->preseq++;
     
-    if ((id > *bloom->header->max_id) && ((*(cur_bloom->header->count)) >= cur_bloom->capacity - 1)) {
-        cur_bloom = new_counting_bloom_from_scale(bloom, (*bloom->header->max_id) + 1, 0);
+    if ((id > bloom->header->max_id) && (cur_bloom->header->count >= cur_bloom->capacity - 1)) {
+        cur_bloom = new_counting_bloom_from_scale(bloom, bloom->header->max_id + 1, 0);
     }
-    if ((*bloom->header->max_id) < id) {
-        (*bloom->header->max_id) = id;
+    if (bloom->header->max_id < id) {
+        bloom->header->max_id = id;
     }
     counting_bloom_add(cur_bloom, s, len);
     
-    (*bloom->header->posseq) ++;
+    bloom->header->posseq++;
     
     return 1;
 }
@@ -415,11 +402,11 @@ int scaling_bloom_remove(scaling_bloom_t *bloom, const char *s, size_t len, uint
     
     for (i = bloom->num_blooms - 1; i >= 0; i--) {
         cur_bloom = bloom->blooms[i];
-        id_diff = id - (*cur_bloom->header->id);
+        id_diff = id - cur_bloom->header->id;
         if (id_diff >= 0) {
-            (*bloom->header->preseq)++;
+            bloom->header->preseq++;
             counting_bloom_remove(cur_bloom, s, len);
-            (*bloom->header->posseq)++;
+            bloom->header->posseq++;
             return 1;
         }
     }
@@ -451,20 +438,17 @@ scaling_bloom_t *scaling_bloom_init(unsigned int capacity, double error_rate, co
     if ((bloom = malloc(sizeof(scaling_bloom_t))) == NULL) {
         return NULL;
     }
-    if ((bloom->header = malloc(sizeof(scaling_bloom_header_t))) == NULL) {
-        fprintf(stderr, "Error, Maoolc for scaling bloom  header failed\n");
-        return NULL;
-    }
-    if ((bloom->bitmap = new_bitmap(fd, SCALE_HEADER_BYTES)) == NULL) {
+    if ((bloom->bitmap = new_bitmap(fd, sizeof(scaling_bloom_header_t))) == NULL) {
         fprintf(stderr, "Error, Could not create bitmap with file\n");
         free_scaling_bloom(bloom);
         return NULL;
     }
     
+    bloom->header = (scaling_bloom_header_t *) bloom->bitmap->array;
     bloom->capacity = capacity;
     bloom->error_rate = error_rate;
     bloom->num_blooms = 0;
-    bloom->num_bytes = SCALE_HEADER_BYTES;
+    bloom->num_bytes = sizeof(scaling_bloom_header_t);
     bloom->fd = fd;
     bloom->blooms = NULL;
     
@@ -521,15 +505,11 @@ scaling_bloom_t *new_scaling_bloom_from_file(unsigned int capacity, double error
     
     bloom = scaling_bloom_init(capacity, error_rate, filename, fd);
     
-    bloom->header->preseq = (uint64_t *)(bloom->bitmap->array);
-    bloom->header->posseq = (uint64_t *)(bloom->bitmap->array + sizeof(uint64_t));
-    bloom->header->max_id = (uint64_t *)(bloom->bitmap->array + 2 * sizeof(uint64_t));
-    
-    offset = SCALE_HEADER_BYTES;
+    offset = sizeof(scaling_bloom_header_t);
     size -= offset;
     while (size) {
-        id    = *(uint32_t *)(bloom->bitmap->array + offset);
-        count = *(uint32_t *)(bloom->bitmap->array + offset + sizeof(uint32_t));
+        id    = ((counting_bloom_header_t *)(bloom->bitmap->array + offset))->id;
+        count = ((counting_bloom_header_t *)(bloom->bitmap->array + offset))->count;
         cur_bloom = new_counting_bloom_from_scale(bloom, id, count);
         size -= cur_bloom->num_bytes;
         offset += cur_bloom->num_bytes;
