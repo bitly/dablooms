@@ -35,12 +35,25 @@ small handful are sharing said counter, the bloom filter would be overloaded
 (resulting in excessive false positives anyway) at any sane error rate, so
 there is no benefit in supporting larger counters.
 
-The bloom filter also employs change sequence numbers to track operations performed on the bloom
-filter. These allow the application to determine failed writes, aka a 'dirty' filter where an
-element is only partially written.  Upon restart, this information allows the application to
-determine if a filter is clean or dirty and make an appropriate decision.
-The counters also provide a means for us to identify a position
-at which the bloom filter is valid in order to replay operations to "catch up" to a current state.
+The bloom filter also employs change sequence numbers to track operations performed
+on the bloom filter. These allow the application to determine if a write might have
+only partially completed (perhaps due to a crash), leaving the filter in an
+inconsistent state. The application can thus determine if a filter is ok or needs
+to be recreated. The sequence number can be used to determine what a consistent but
+out-of-date filter missed, and bring it up-to-date.
+
+There are two sequence numbers (and helper functions to get them): "mem_seqnum" and
+"disk_seqnum". The "mem" variant is useful if the user is sure the OS didn't crash,
+and the "disk" variant is useful if the OS might have crashed since the bloom filter
+was last changed. Both values could be "0", meaning the filter is possibly
+inconsistent from their point of view, or a non-zero sequence number that the filter
+is consistent with. The "mem" variant is often non-zero, but the "disk" variant only
+becomes non-zero right after a (manual) flush. This can be expensive (it's an fsync),
+so the value can be ignored if not relevant for the application. For example, if the
+bloom file exists in a directory which is cleared at boot (like `/tmp`), then the
+application can safely assume that any existing file was not affected by an OS crash,
+and never bother to flush or check disk_seqnum. Schemes involving batching up changes
+are also possible.
 
 ### Installing
 After you have cloned the repo, type `make`, `make install` (`sudo` may be needed).
