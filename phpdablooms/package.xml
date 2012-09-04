@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package packagerversion="1.8.2" version="2.0" xmlns="http://pear.php.net/dtd/package-2.0" xmlns:tasks="http://pear.php.net/dtd/tasks-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0 http://pear.php.net/dtd/tasks-1.0.xsd http://pear.php.net/dtd/package-2.0 http://pear.php.net/dtd/package-2.0.xsd">
+ <name>dablooms</name>
+ <channel>pecl.php.net</channel>
+ <summary>A Scalable, Counting, Bloom Filter</summary>
+ <description>Dablooms is one such implementation of a scaling, counting, bloom filter that takes additional metadata during additions and deletions in the form of a monotonically increasing integer to classify elements such as a timestamp. This is used during additions/removals to easily classify an element into the correct bloom filter (essentially a comparison against a range).</description>
+ <lead>
+  <name>Shuhei Tanuma</name>
+  <user>chobieeee</user>
+  <email>chobieeee@php.net</email>
+  <active>yes</active>
+ </lead>
+ <date>2012-08-25</date>
+ <version>
+  <release>0.2.0</release>
+  <api>0.2.0</api>
+ </version>
+ <stability>
+  <release>beta</release>
+  <api>beta</api>
+ </stability>
+ <license uri="http://www.php.net/license">PHP</license>
+ <notes>
+	* use namespace
+ </notes>
+ <contents>
+  <dir name="/">
+   <file role="doc" name="test_dablooms.php" />
+   <file role="doc" name="README.md" />
+   <file role="src" name="config.m4" />
+   <file role="src" name="php_dablooms.c" />
+   <file role="src" name="php_dablooms.h" />
+   <dir name="src">
+     <file role="src" name="dablooms.c" />
+     <file role="src" name="dablooms.h" />
+     <file role="src" name="murmur.c" />
+     <file role="src" name="murmur.h" />
+   </dir>
+   <dir name="tests">
+     <file role="test" name="001.phpt" />
+     <file role="test" name="002-construct.phpt" />
+     <file role="test" name="003-add-check-remove.phpt" />
+     <dir name="fixtures">
+       <file role="doc" name=".gitkeep" />
+     </dir>
+   </dir>
+  </dir>
+ </contents>
+ <dependencies>
+  <required>
+   <php>
+    <min>5.3.1</min>
+    <max>6.0.0</max>
+    <exclude>6.0.0</exclude>
+   </php>
+   <pearinstaller>
+    <min>1.4.0b1</min>
+   </pearinstaller>
+  </required>
+ </dependencies>
+ <providesextension>dablooms</providesextension>
+ <extsrcrelease/>
+ <changelog>
+ </changelog>
+</package>
