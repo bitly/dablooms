@@ -45,6 +45,16 @@ static int Dablooms_init(Dablooms *self, PyObject *args, PyObject *kwds)
     return 0;
 }
 
+static int contains(Dablooms *self, PyObject *key)
+{
+    if (!PyString_Check(key)) {
+      return 0; /* return False */
+    }
+    return scaling_bloom_check(self->filter,
+                               PyString_AsString(key),
+                               (int)PyString_Size(key));
+}
+
 static PyObject *check(Dablooms *self, PyObject *args)
 {
     const char *hash;
@@ -113,6 +123,17 @@ static PyMemberDef Dablooms_members[] = {
     {NULL}  /* Sentinel */
 };
 
+static PySequenceMethods Dablooms_sequence = {
+  NULL,                 /*sq_length*/
+  NULL,                 /*sq_concat*/
+  NULL,                 /*sq_repeat*/
+  NULL,                 /*sq_item*/
+  NULL,                 /*sq_slice*/
+  NULL,                 /*sq_ass_item*/
+  NULL,                 /*sq_ass_slice*/
+  (objobjproc)contains, /*sq_contains*/
+};
+
 static PyTypeObject DabloomsType = {
     PyObject_HEAD_INIT(NULL)
     0,                              /*ob_size*/
@@ -126,7 +147,7 @@ static PyTypeObject DabloomsType = {
     0,                              /*tp_compare*/
     0,                              /*tp_repr*/
     0,                              /*tp_as_number*/
-    0,                              /*tp_as_sequence*/
+    &Dablooms_sequence,             /*tp_as_sequence*/
     0,                              /*tp_as_mapping*/
     0,                              /*tp_hash*/
     0,                              /*tp_call*/
