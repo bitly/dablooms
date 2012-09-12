@@ -1,8 +1,11 @@
 pydablooms
 ==========
 
-Python language bindings for dablooms. See main dablooms readme
-for build and install instructions.
+Python language bindings for dablooms. See the main dablooms `README.md`
+for build and install instructions. There is also a `test_pydablooms`
+target in the Makefile (remember to specify any options to make you used
+during the build).
+
 
 ### Example usage
     

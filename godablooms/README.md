@@ -13,6 +13,3 @@ To run tests:
 
     $ go test
 
-NOTE: the Go package (and libdablooms) are not inherently thread safe, this is the 
-clients responsibility.
-

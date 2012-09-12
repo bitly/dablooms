@@ -1,15 +1,20 @@
-cl-dablooms: Common Lisp CFFI wrapper for the dablooms library
+cl-dablooms
+===========
 
-Dependencies:
+Common Lisp CFFI wrapper for the dablooms library
 
-    You will need an ANSI-compliant Common Lisp implementation (I use SBCL) 
-    and the [quicklisp](http://www.quicklisp.org/) library manager. 
+## Dependencies
 
-Usage:
+You will need an ANSI-compliant Common Lisp implementation (I use SBCL)
+and the [quicklisp](http://www.quicklisp.org/) library manager. The first
+time you use quicklisp's quickload to load cl-dablooms, it will install
+CFFI (and its dependencies).
 
- * Install the dablooms shared library on your system library path
- * CD into the cl-dablooms directory and start your LISP REPL.
- * Load cl-dablooms into the repl with `(ql:quickload "cl-dablooms")`
+## Usage
+
+1. Install the dablooms shared library on your system library path
+2. CD into the cl-dablooms directory and start your LISP REPL.
+3. Load cl-dablooms into the repl with `(ql:quickload "cl-dablooms")`
 
 Example:
 
@@ -35,5 +40,3 @@ strings or symbols. However, the symbols and strings do not have separate
 namespaces. That is, `(dablooms:check bloom "foo")` and 
 `(dablooms:check bloom :foo)` are equivalent. 
 
-NOTE: the Lisp package (and libdablooms) are not inherently thread safe, 
-this is the client's responsibility.

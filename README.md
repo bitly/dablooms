@@ -55,17 +55,20 @@ application can safely assume that any existing file was not affected by an OS c
 and never bother to flush or check disk_seqnum. Schemes involving batching up changes
 are also possible.
 
+The dablooms library is not inherently thread safe, this is the clients responsibility.
+Bindings are also not thread safe, unless they state otherwise.
+
 ### Installing
-After you have cloned the repo, type `make`, `make install` (`sudo` may be needed).
+Clone the repo, or download and extract a tarball of a tagged version
+[from github](https://github.com/bitly/dablooms/tags).
+In the source tree, type `make`, `make install` (`sudo` may be needed).
 This will only install static and dynamic versions of the C dablooms library "libdablooms".
 
 To use a specific build directory, install prefix, or destination directory for packaging,
-specify `BLDDIR`, `PREFIX`, or `DESTDIR` to make.
+specify `BLDDIR`, `PREFIX`, or `DESTDIR` to make. For example:
+`make install BLDDIR=/tmp/dablooms/bld DESTDIR=/tmp/dablooms/pkg PREFIX=/usr`
 
 Look at the output of `make help` for more options and targets.
-
-An example use of BLDDIR, PREFIX, and DESTDIR might be:
-`make install BLDDIR=/tmp/dablooms/bld DESTDIR=/tmp/dablooms/pkg PREFIX=/usr`
 
 Also available are bindings for various other languages:
 
@@ -74,16 +77,23 @@ To install the Python bindings "pydablooms" (currently only compatibly with pyth
 run `make pydablooms`, `make install_pydablooms` (`sudo` may be needed).
 
 To use and install for a specific version of Python installed on your system,
-use the `PYTHON` option to make. For example: `make install_pydablooms PYTHON=python2.7`
+use the `PYTHON` option to make. For example: `make install_pydablooms PYTHON=python2.7`.
+You can override the module install location with the `PY_MOD_DIR` option to make,
+and the `BLDDIR` and `DESTDIR` options also affect pydablooms.
 
 See pydablooms/README.md for more info.
 
 #### Go (godablooms)
-The Go bindings "godablooms" are not integrated into the Makefile. Install libdablooms
-first, then look at `godablooms/README.md`
+The Go bindings "godablooms" are not integrated into the Makefile.
+Install libdablooms first, then look at `godablooms/README.md`
 
 #### PHP (phpdablooms)
-The PHP bindings "phpdablooms" are not integrated into the Makefile. please look at `phpdablooms/README.md`
+The PHP bindings "phpdablooms" are not integrated into the Makefile.
+Please look at `phpdablooms/README.md`. libdablooms does not need to be installed.
+
+#### Common Lisp (cl-dablooms)
+The Common Lisp bindings "cl-dablooms" are not integrated into the Makefile.
+Install libdablooms first, then look at `cl-dablooms/README.md`
 
 ### Contributing
 If you make changes to C portions of dablooms which you would like merged into the
@@ -191,14 +201,14 @@ the integrity of said filter, i.e. prevents the possibility of false negatives. 
 a scaling, counting, bloom filter is possible if upon additions and deletions
 one can correctly decide which bloom filter contains the element.
 
-There are several advantages to using a bloom filters.  A bloom filter
-gives the application cheap, memory efficient set operations, with no actual data stored
-about the given element. Rather, bloom filters allow the application to test, with some
-given error probability, the membership of an item.  This leads to the
+There are several advantages to using a bloom filter. A bloom filter gives the
+application cheap, memory efficient set operations, with no actual data stored
+about the given element. Rather, bloom filters allow the application to test,
+with some given error probability, the membership of an item. This leads to the
 conclusion that the majority of operations performed on bloom filters are the
-queries of membership, rather than the addition and removal of elements.  Thus,
+queries of membership, rather than the addition and removal of elements. Thus,
 for a scaling, counting, bloom filter, we can optimize for membership queries at
-the expense of additions and removals.  This expense comes not in performance,
+the expense of additions and removals. This expense comes not in performance,
 but in the addition of more metadata concerning an element and its relation to
 the bloom filter.  With the addition of some sort of identification of an
 element, which does not need to be unique as long as it is fairly distributed, it
@@ -208,21 +218,45 @@ and removals.
 
 ## Enter dablooms
 dablooms is one such implementation of a scaling, counting, bloom filter that takes 
-additional metadata during additions and deletions in the form of a monotonically 
-increasing integer to classify elements such as a timestamp. This is used during 
-additions/removals to easily classify an element into the correct bloom filter 
-(essentially a comparison against a range).
+additional metadata during additions and deletions in the form of a (generally)
+monotonically  increasing integer to classify elements (possibly a timestamp).
+This is used during additions/removals to easily determine the correct bloom filter
+for an element (each filter is assigned a range). Checking an item against the bloom
+filter, which is assumed to be the dominant activity, does not use the id (it works
+like a normal scaling bloom filter).
 
-dablooms is designed to scale itself using these monotonically increasing identifiers
-and the given capacity. When a bloom filter is at capacity, dablooms will create a new
-bloom filter using the to-be-added elements identifier as the beginning identifier for
-the new bloom filter. Given the fact that the identifiers monotonically increase, new
-elements will be added to the newest bloom filter. Note, in theory and as implemented,
-nothing prevents one from adding an element to any "older" filter. You just run the
-increasing risk of the error probability growing beyond the bound as it becomes
-"overfilled".
+dablooms is designed to scale itself using these identifiers and the given capacity.
+When a bloom filter is at capacity, dablooms will create a new bloom filter which
+starts at the next id after the greatest id of the previous bloom filter. Given the
+fact that the identifiers monotonically increase, new elements will be added to the
+newest bloom filter. Note, in theory and as implemented, nothing prevents one from
+adding an element to any "older" filter. You just run the increasing risk of the
+error probability growing beyond the bound as it becomes "overfilled".
 
 You can then remove any element from any bloom filter using the identifier to intelligently
 pick which bloom filter to remove from.  Consequently, as you continue to remove elements
 from bloom filters that you are not continuing to add to, these bloom filters will become
 more accurate.
+
+The "id" of an element does not need to be known to check the bloom filter, but does need
+to be known when the element is removed (and the same as when it was added). This might
+be convenient if the item already has an appropriate id (almost always increasing for new
+items) associated with it.
+
+### Example use case
+There is a database with a collection of entries. There is a series of items, each of which
+you want to look up in the database; most will have no entry in the database, but some
+will. Perhaps it's a database of spam links. If you use dablooms in front of the database,
+you can avoid needing to check the database for almost all items which won't be found in
+it anyway, and save a lot of time and effort. It's also much easier to distribute the
+bloom filter than the entire database. But to make it work, you need to determine an "id"
+whenever you add to or remove from the bloom filter. You could store the timestamp when
+you add the item to the database as another column in the database, and give it to
+`scaling_bloom_add()` as well. When you remove the item, you look it up in the database
+first and pass the timestamp stored there to `scaling_bloom_remove()`. The timestamps for
+new items will be equal or greater, and definitely greater over time. Instead of
+timestamps, you could also use an auto-incrementing index. Checks against the bloom
+don't need to know the id and should be quick. If a check comes back negative, you can be
+sure the item isn't in the database, and skip that query completely. If a check comes
+back positive, you have to query the database, because there's a slight chance that the
+item isn't actually in there.
