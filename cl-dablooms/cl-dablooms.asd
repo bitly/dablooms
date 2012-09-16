@@ -7,7 +7,7 @@
 
 (defsystem :cl-dablooms
   :description "CFFI bindings to bit.ly's Dablooms library"
-  :version "0.1.0"
+  :version "0.9.0"
   :author "Zhehao Mao"
   :license "MIT"
   :components ((:file "package")
