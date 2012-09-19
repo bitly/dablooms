@@ -32,7 +32,7 @@ HELPTEXT = "\
 
 # only bump major on ABI changing release
 SO_VER_MAJOR = 1
-SO_VER_MINOR = 0
+SO_VER_MINOR = 1
 
 PREFIX = /usr/local
 LIBDIR = $(PREFIX)/lib

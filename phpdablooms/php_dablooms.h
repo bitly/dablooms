@@ -3,7 +3,7 @@
 #define PHP_DABLOOMS_H
 
 #define PHP_DABLOOMS_EXTNAME "dablooms"
-#define PHP_DABLOOMS_EXTVER "0.0.1"
+#define PHP_DABLOOMS_EXTVER "0.9.0"
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
