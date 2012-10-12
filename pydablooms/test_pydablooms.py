@@ -46,7 +46,11 @@ words_file.seek(0)
 i = 0
 for line in words_file:
     exists = bloom.check(line.rstrip())
-    
+    contains = line.rstrip() in bloom
+    assert exists == contains, \
+        "ERROR: %r from 'bloom.check(x)', %i from 'x in bloom'" \
+        % (exists, contains)
+
     if i % 5 == 0:
         if exists:
             false_positives += 1
