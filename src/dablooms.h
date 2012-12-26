@@ -17,9 +17,9 @@ typedef struct {
 bitmap_t *bitmap_resize(bitmap_t *bitmap, size_t old_size, size_t new_size);
 bitmap_t *new_bitmap(int fd, size_t bytes);
 
-int bitmap_increment(bitmap_t *bitmap, unsigned int index, unsigned int offset);
-int bitmap_decrement(bitmap_t *bitmap, unsigned int index, unsigned int offset);
-int bitmap_check(bitmap_t *bitmap, unsigned int index, unsigned int offset);
+int bitmap_increment(bitmap_t *bitmap, unsigned int index, long offset);
+int bitmap_decrement(bitmap_t *bitmap, unsigned int index, long offset);
+int bitmap_check(bitmap_t *bitmap, unsigned int index, long offset);
 int bitmap_flush(bitmap_t *bitmap);
 
 void free_bitmap(bitmap_t *bitmap);
@@ -34,7 +34,7 @@ typedef struct {
 typedef struct {
     counting_bloom_header_t *header;
     unsigned int capacity;
-    unsigned int offset;
+    long offset;
     unsigned int counts_per_func;
     uint32_t *hashes;
     size_t nfuncs;

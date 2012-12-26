@@ -109,9 +109,9 @@ bitmap_t *new_bitmap(int fd, size_t bytes)
     return bitmap;
 }
 
-int bitmap_increment(bitmap_t *bitmap, unsigned int index, unsigned int offset)
+int bitmap_increment(bitmap_t *bitmap, unsigned int index, long offset)
 {
-    uint32_t access = index / 2 + offset;
+    long access = index / 2 + offset;
     uint8_t temp;
     uint8_t n = bitmap->array[access];
     if (index % 2 != 0) {
@@ -132,9 +132,9 @@ int bitmap_increment(bitmap_t *bitmap, unsigned int index, unsigned int offset)
 }
 
 /* increments the four bit counter */
-int bitmap_decrement(bitmap_t *bitmap, unsigned int index, unsigned int offset)
+int bitmap_decrement(bitmap_t *bitmap, unsigned int index, long offset)
 {
-    uint32_t access = index / 2 + offset;
+    long access = index / 2 + offset;
     uint8_t temp;
     uint8_t n = bitmap->array[access];
     
@@ -156,9 +156,9 @@ int bitmap_decrement(bitmap_t *bitmap, unsigned int index, unsigned int offset)
 }
 
 /* decrements the four bit counter */
-int bitmap_check(bitmap_t *bitmap, unsigned int index, unsigned int offset)
+int bitmap_check(bitmap_t *bitmap, unsigned int index, long offset)
 {
-    unsigned int access = index / 2 + offset;
+    long access = index / 2 + offset;
     if (index % 2 != 0 ) {
         return bitmap->array[access] & 0x0f;
     } else {
@@ -211,7 +211,7 @@ int free_counting_bloom(counting_bloom_t *bloom)
     return 0;
 }
 
-counting_bloom_t *counting_bloom_init(unsigned int capacity, double error_rate, unsigned int offset)
+counting_bloom_t *counting_bloom_init(unsigned int capacity, double error_rate, long offset)
 {
     counting_bloom_t *bloom;
     
@@ -319,7 +319,8 @@ int free_scaling_bloom(scaling_bloom_t *bloom)
 /* creates a new counting bloom filter from a given scaling bloom filter, with count and id */
 counting_bloom_t *new_counting_bloom_from_scale(scaling_bloom_t *bloom)
 {
-    int i, offset;
+    int i;
+    long offset;
     double error_rate;
     counting_bloom_t *cur_bloom;
     
@@ -544,7 +545,6 @@ scaling_bloom_t *new_scaling_bloom_from_file(unsigned int capacity, double error
 {
     int fd;
     off_t size;
-    unsigned int offset;
     
     scaling_bloom_t *bloom;
     counting_bloom_t *cur_bloom;
@@ -564,13 +564,11 @@ scaling_bloom_t *new_scaling_bloom_from_file(unsigned int capacity, double error
     
     bloom = scaling_bloom_init(capacity, error_rate, filename, fd);
     
-    offset = sizeof(scaling_bloom_header_t);
-    size -= offset;
+    size -= sizeof(scaling_bloom_header_t);
     while (size) {
         cur_bloom = new_counting_bloom_from_scale(bloom);
         // leave count and id as they were set in the file
         size -= cur_bloom->num_bytes;
-        offset += cur_bloom->num_bytes;
         if (size < 0) {
             free_scaling_bloom(bloom);
             fprintf(stderr, "Error, Actual filesize and expected filesize are not equal\n");
