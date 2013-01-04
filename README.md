@@ -65,8 +65,8 @@ In the source tree, type `make`, `make install` (`sudo` may be needed).
 This will only install static and dynamic versions of the C dablooms library "libdablooms".
 
 To use a specific build directory, install prefix, or destination directory for packaging,
-specify `BLDDIR`, `PREFIX`, or `DESTDIR` to make. For example:
-`make install BLDDIR=/tmp/dablooms/bld DESTDIR=/tmp/dablooms/pkg PREFIX=/usr`
+specify `BLDDIR`, `prefix`, or `DESTDIR` to make. For example:
+`make install BLDDIR=/tmp/dablooms/bld DESTDIR=/tmp/dablooms/pkg prefix=/usr`
 
 Look at the output of `make help` for more options and targets.
 

@@ -5,13 +5,13 @@ HELPTEXT = "\
 \n                               \
 \n    BLDDIR     ($(BLDDIR))     \
 \n    DESTDIR    ($(DESTDIR))    \
-\n    PREFIX     ($(PREFIX))     \
-\n    LIBDIR     ($(LIBDIR))     \
-\n    INCDIR     ($(INCDIR))     \
+\n    prefix     ($(prefix))     \
+\n    libdir     ($(libdir))     \
+\n    includedir ($(includedir)) \
 \n                               \
 \n    CC         ($(CC))         \
-\n    CFLAGS     ($(CFLAGS))     \
-\n    LDFLAGS    ($(LDFLAGS))    \
+\n    CFLAGS     ($(ALL_CFLAGS)) \
+\n    LDFLAGS    ($(ALL_LDFLAGS))\
 \n    INSTALL    ($(INSTALL))    \
 \n                               \
 \n    PYTHON     ($(PYTHON))     \
@@ -34,15 +34,16 @@ HELPTEXT = "\
 SO_VER_MAJOR = 1
 SO_VER_MINOR = 1
 
-PREFIX = /usr/local
-LIBDIR = $(PREFIX)/lib
-INCDIR = $(PREFIX)/include
+prefix = /usr/local
+libdir = $(prefix)/lib
+includedir = $(prefix)/include
 DESTDIR =
 BLDDIR = build
 
-CFLAGS = -g -Wall -fPIC -O2
-LDFLAGS = -g
-LDLIBS = -lm
+CFLAGS = -g -Wall -O2
+LDFLAGS =
+ALL_CFLAGS = -fPIC $(CFLAGS)
+ALL_LDFLAGS = -lm $(LDFLAGS)
 
 INSTALL = install
 CC = gcc
@@ -60,6 +61,7 @@ ifeq ($(UNAME),Darwin)
 	SO_EXT_MAJOR = $(SO_VER_MAJOR).$(SO_NAME)
 	SO_EXT = $(SO_VER).$(SO_NAME)
 endif
+SHARED_LDFLAGS = -shared -Wl,$(SO_CMD),libdablooms.$(SO_EXT_MAJOR)
 
 SRCS_LIBDABLOOMS = dablooms.c murmur.c
 SRCS_TESTS = test_dablooms.c
@@ -81,20 +83,20 @@ libdablooms: $(patsubst %, $(BLDDIR)/%, $(LIB_FILES))
 
 install: install_libdablooms
 
-install_libdablooms: $(patsubst %, $(DESTDIR)$(LIBDIR)/%, $(LIB_FILES)) $(DESTDIR)$(INCDIR)/dablooms.h
+install_libdablooms: $(patsubst %, $(DESTDIR)$(libdir)/%, $(LIB_FILES)) $(DESTDIR)$(includedir)/dablooms.h
 
-$(DESTDIR)$(LIBDIR)/libdablooms.a: $(BLDDIR)/libdablooms.a
+$(DESTDIR)$(libdir)/libdablooms.a: $(BLDDIR)/libdablooms.a
 
-$(DESTDIR)$(LIBDIR)/libdablooms.$(SO_EXT): $(BLDDIR)/libdablooms.$(SO_EXT)
+$(DESTDIR)$(libdir)/libdablooms.$(SO_EXT): $(BLDDIR)/libdablooms.$(SO_EXT)
 
-$(patsubst %, $(DESTDIR)$(LIBDIR)/%, $(LIB_SYMLNKS)): %: $(DESTDIR)$(LIBDIR)/libdablooms.$(SO_EXT)
+$(patsubst %, $(DESTDIR)$(libdir)/%, $(LIB_SYMLNKS)): %: $(DESTDIR)$(libdir)/libdablooms.$(SO_EXT)
 	@echo " SYMLNK " $@
 	@$(INSTALL) -d $(dir $@)
 	@ln -fs $(notdir $<) $@
 
-$(DESTDIR)$(INCDIR)/dablooms.h: src/dablooms.h
+$(DESTDIR)$(includedir)/dablooms.h: src/dablooms.h
 
-$(DESTDIR)$(PREFIX)/%:
+$(DESTDIR)$(prefix)/%:
 	@echo " INSTALL " $@
 	@$(INSTALL) -d $(dir $@)
 	@$(INSTALL) $< $@
@@ -102,7 +104,7 @@ $(DESTDIR)$(PREFIX)/%:
 $(BLDDIR)/%.o: src/%.c
 	@echo " CC " $@
 	@mkdir -p $(dir $@)
-	@$(CC) -o $@ -c $< $(CFLAGS) -MMD -MF $@.deps
+	@$(CC) -o $@ -c $< $(ALL_CFLAGS) -MMD -MF $@.deps
 
 $(BLDDIR)/libdablooms.a: $(OBJS_LIBDABLOOMS)
 	@echo " AR " $@
@@ -111,7 +113,7 @@ $(BLDDIR)/libdablooms.a: $(OBJS_LIBDABLOOMS)
 
 $(BLDDIR)/libdablooms.$(SO_EXT): $(OBJS_LIBDABLOOMS)
 	@echo " SO " $@
-	@$(CC) -shared -Wl,$(SO_CMD),libdablooms.$(SO_EXT_MAJOR) -o $@ $^ $(LDLIBS)
+	@$(CC) -o $@ $(ALL_CFLAGS) $(SHARED_LDFLAGS) $(ALL_LDFLAGS) $^
 
 $(patsubst %, $(BLDDIR)/%, $(LIB_SYMLNKS)): %: $(BLDDIR)/libdablooms.$(SO_EXT)
 	@echo " SYMLNK " $@
@@ -120,7 +122,7 @@ $(patsubst %, $(BLDDIR)/%, $(LIB_SYMLNKS)): %: $(BLDDIR)/libdablooms.$(SO_EXT)
 
 $(BLDDIR)/test_dablooms: $(OBJS_TESTS) $(BLDDIR)/libdablooms.a
 	@echo " LD " $@
-	@$(CC) -o $@ $(LDFLAGS) $(OBJS_TESTS) $(BLDDIR)/libdablooms.a $(LDLIBS)
+	@$(CC) -o $@ $(ALL_CFLAGS) $(ALL_LDFLAGS) $(OBJS_TESTS) $(BLDDIR)/libdablooms.a
 
 test: $(BLDDIR)/test_dablooms
 	@$(BLDDIR)/test_dablooms $(BLDDIR)/testbloom.bin $(WORDS)
