@@ -93,9 +93,12 @@ Total Size: %d KiB''' % (
 if false_negatives > 0:
     print("TEST FAIL (false negatives exist)")
 elif false_positive_rate > error_rate:
-    print("TEST FAIL (false positive rate too high)")
+    print("TEST WARN (false positive rate too high)")
 else:
     print("TEST PASS")
 print("")
 
-sys.exit(0)
+if false_negatives > 0:
+    sys.exit(1)
+else:
+    sys.exit(0)
