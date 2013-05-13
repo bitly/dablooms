@@ -16,7 +16,7 @@
 #include "murmur.h"
 #include "dablooms.h"
 
-#define DABLOOMS_VERSION "0.9.0"
+#define DABLOOMS_VERSION "0.9.1"
 
 #define ERROR_TIGHTENING_RATIO 0.5
 #define SALT_CONSTANT 0x97c29b3a
