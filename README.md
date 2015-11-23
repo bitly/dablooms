@@ -4,7 +4,7 @@ Dablooms: A Scalable, Counting, Bloom Filter
 _Note_: this project has been mostly unmaintained for a while.
 
 ### Overview
-This project aims to demonstrate a novel bloom filter implementation that can
+This project aims to demonstrate a novel Bloom filter implementation that can
 scale, and provide not only the addition of new members, but reliable removal
 of existing members.
 
@@ -13,7 +13,7 @@ storage of elements at the cost of possible false positive on membership
 queries.
 
 **dablooms** implements such a structure that takes additional metadata to classify
-elements in order to make an intelligent decision as to which bloom filter an element
+elements in order to make an intelligent decision as to which Bloom filter an element
 should belong.
 
 ### Features
@@ -30,12 +30,12 @@ memory mapped which provides async flushing and persistence at low cost.
 In an effort to maintain memory efficiency, rather than using integers, or
 even whole bytes as counters, we use only four bit counters. These four bit
 counters allow up to 15 items to share a counter in the map. If more than a
-small handful are sharing said counter, the bloom filter would be overloaded
+small handful are sharing said counter, the Bloom filter would be overloaded
 (resulting in excessive false positives anyway) at any sane error rate, so
 there is no benefit in supporting larger counters.
 
-The bloom filter also employs change sequence numbers to track operations performed
-on the bloom filter. These allow the application to determine if a write might have
+The Bloom filter also employs change sequence numbers to track operations performed
+on the Bloom filter. These allow the application to determine if a write might have
 only partially completed (perhaps due to a crash), leaving the filter in an
 inconsistent state. The application can thus determine if a filter is ok or needs
 to be recreated. The sequence number can be used to determine what a consistent but
@@ -43,13 +43,13 @@ out-of-date filter missed, and bring it up-to-date.
 
 There are two sequence numbers (and helper functions to get them): "mem_seqnum" and
 "disk_seqnum". The "mem" variant is useful if the user is sure the OS didn't crash,
-and the "disk" variant is useful if the OS might have crashed since the bloom filter
+and the "disk" variant is useful if the OS might have crashed since the Bloom filter
 was last changed. Both values could be "0", meaning the filter is possibly
 inconsistent from their point of view, or a non-zero sequence number that the filter
 is consistent with. The "mem" variant is often non-zero, but the "disk" variant only
 becomes non-zero right after a (manual) flush. This can be expensive (it's an fsync),
 so the value can be ignored if not relevant for the application. For example, if the
-bloom file exists in a directory which is cleared at boot (like `/tmp`), then the
+Bloom file exists in a directory which is cleared at boot (like `/tmp`), then the
 application can safely assume that any existing file was not affected by an OS crash,
 and never bother to flush or check disk_seqnum. Schemes involving batching up changes
 are also possible.
@@ -103,8 +103,8 @@ and defaults to `/usr/share/dict/words`. If your path differs, you can use the
 
 This will run a simple test that iterates through a word list and
 adds each word to dablooms. It iterates again, removing every fifth
-element. Lastly, it saves the file, opens a new filter, and iterates a third time 
-checking the existence of each word. It prints results of the true negatives, 
+element. Lastly, it saves the file, opens a new filter, and iterates a third time
+checking the existence of each word. It prints results of the true negatives,
 false positives, true positives, and false negatives, and the false positive rate.
 
 The false positive rate is calculated by "false positives / (false positivies + true negatives)".
@@ -122,15 +122,15 @@ Check out the performance yourself, and checkout the size of the resulting file!
 ## Bloom Filter Basics
 Bloom filters are probabilistic data structures that provide
 space-efficient storage of elements at the cost of occasional false positives on
-membership queries, i.e. a bloom filter may state true on query when it in fact does
-not contain said element. A bloom filter is traditionally implemented as an array of
-`M` bits, where `M` is the size of the bloom filter. On initialization all bits are
+membership queries, i.e. a Bloom filter may state true on query when it in fact does
+not contain said element. A Bloom filter is traditionally implemented as an array of
+`M` bits, where `M` is the size of the Bloom filter. On initialization all bits are
 set to zero. A filter is also parameterized by a constant `k` that defines the number
 of hash functions used to set and test bits in the filter.  Each hash function should
 output one index in `M`.  When inserting an element `x` into the filter, the bits
 in the `k` indices `h1(x), h2(x), ..., hk(X)` are set.
 
-In order to query a bloom filter, say for element `x`, it suffices to verify if
+In order to query a Bloom filter, say for element `x`, it suffices to verify if
 all bits in indices `h1(x), h2(x), ..., hk(x)` are set. If one or more of these
 bits is not set then the queried element is definitely not present in the
 filter. However, if all these bits are set, then the element is considered to
@@ -147,10 +147,10 @@ negatives**.  Using a counter, instead of a bit, can circumvent this issue.
 The bit can be incremented when an element is hashed to a
 given location, and decremented upon removal.  Membership queries rely on whether a
 given counter is greater than zero.  This reduces the exceptional
-space-efficiency provided by the standard bloom filter.
+space-efficiency provided by the standard Bloom filter.
 
 ### Scalable Bloom Filters: Solving Scale
-Another important property of a bloom filter is its linear relationship between size
+Another important property of a Bloom filter is its linear relationship between size
 and storage capacity. If the maximum allowable error probability and the number of elements to store
 are both known, it is relatively straightforward to dimension an appropriate
 filter. However, it is not always possible to know how many elements
@@ -159,8 +159,8 @@ suffering from a ballooning error probability as it fills.
 
 Almeida, Baquero, Preguiça, Hutchison published a paper in 2006, on
 [Scalable Bloom Filters](http://www.sciencedirect.com/science/article/pii/S0020019006003127),
-which suggested a means of scalable bloom filters by creating essentially
-a list of bloom filters that act as one large bloom filter. When greater
+which suggested a means of scalable Bloom filters by creating essentially
+a list of Bloom filters that act as one large Bloom filter. When greater
 capacity is desired, a new filter is added to the list.
 
 Membership queries are conducted on each filter with the positives
@@ -176,60 +176,60 @@ ratio, `r`. As a result, the bounded error probability is represented as:
     1 - 𝚺(1 - P0 * r^i) where r is chosen as 0 < r < 1
 
 Since size is simply a function of an error probability and capacity, any
-array of growth functions can be applied to scale the size of the bloom filter
+array of growth functions can be applied to scale the size of the Bloom filter
 as necessary.  We found it sufficient to pick .9 for `r`.
 
 ## Problems with Mixing Scalable and Counting Bloom Filters
-Scalable bloom filters do not allow for the removal of elements from the filter.
-In addition, simply converting each bloom filter in a scalable bloom filter into
+Scalable Bloom filters do not allow for the removal of elements from the filter.
+In addition, simply converting each Bloom filter in a scalable Bloom filter into
 a counting filter also poses problems. Since an element can be in any filter, and
-bloom filters inherently allow for false positives, a given element may appear to
+Bloom filters inherently allow for false positives, a given element may appear to
 be in two or more filters. If an element is inadvertently removed from a filter
 which did not contain it, it would introduce the possibility of **false negatives**.
 
 If however, an element can be removed from the correct filter, it maintains
 the integrity of said filter, i.e. prevents the possibility of false negatives. Thus,
-a scaling, counting, bloom filter is possible if upon additions and deletions
-one can correctly decide which bloom filter contains the element.
+a scaling, counting, Bloom filter is possible if upon additions and deletions
+one can correctly decide which Bloom filter contains the element.
 
-There are several advantages to using a bloom filter. A bloom filter gives the
+There are several advantages to using a Bloom filter. A Bloom filter gives the
 application cheap, memory efficient set operations, with no actual data stored
-about the given element. Rather, bloom filters allow the application to test,
+about the given element. Rather, Bloom filters allow the application to test,
 with some given error probability, the membership of an item. This leads to the
-conclusion that the majority of operations performed on bloom filters are the
+conclusion that the majority of operations performed on Bloom filters are the
 queries of membership, rather than the addition and removal of elements. Thus,
-for a scaling, counting, bloom filter, we can optimize for membership queries at
+for a scaling, counting, Bloom filter, we can optimize for membership queries at
 the expense of additions and removals. This expense comes not in performance,
 but in the addition of more metadata concerning an element and its relation to
-the bloom filter.  With the addition of some sort of identification of an
+the Bloom filter.  With the addition of some sort of identification of an
 element, which does not need to be unique as long as it is fairly distributed, it
 is possible to correctly determine which filter an element belongs to, thereby able
-to maintain the integrity of a given bloom filter with accurate additions
+to maintain the integrity of a given Bloom filter with accurate additions
 and removals.
 
 ## Enter dablooms
-dablooms is one such implementation of a scaling, counting, bloom filter that takes 
+dablooms is one such implementation of a scaling, counting, Bloom filter that takes
 additional metadata during additions and deletions in the form of a (generally)
 monotonically  increasing integer to classify elements (possibly a timestamp).
-This is used during additions/removals to easily determine the correct bloom filter
-for an element (each filter is assigned a range). Checking an item against the bloom
+This is used during additions/removals to easily determine the correct Bloom filter
+for an element (each filter is assigned a range). Checking an item against the Bloom
 filter, which is assumed to be the dominant activity, does not use the id (it works
-like a normal scaling bloom filter).
+like a normal scaling Bloom filter).
 
 dablooms is designed to scale itself using these identifiers and the given capacity.
-When a bloom filter is at capacity, dablooms will create a new bloom filter which
-starts at the next id after the greatest id of the previous bloom filter. Given the
+When a Bloom filter is at capacity, dablooms will create a new Bloom filter which
+starts at the next id after the greatest id of the previous Bloom filter. Given the
 fact that the identifiers monotonically increase, new elements will be added to the
-newest bloom filter. Note, in theory and as implemented, nothing prevents one from
+newest Bloom filter. Note, in theory and as implemented, nothing prevents one from
 adding an element to any "older" filter. You just run the increasing risk of the
 error probability growing beyond the bound as it becomes "overfilled".
 
-You can then remove any element from any bloom filter using the identifier to intelligently
-pick which bloom filter to remove from.  Consequently, as you continue to remove elements
-from bloom filters that you are not continuing to add to, these bloom filters will become
+You can then remove any element from any Bloom filter using the identifier to intelligently
+pick which Bloom filter to remove from.  Consequently, as you continue to remove elements
+from Bloom filters that you are not continuing to add to, these Bloom filters will become
 more accurate.
 
-The "id" of an element does not need to be known to check the bloom filter, but does need
+The "id" of an element does not need to be known to check the Bloom filter, but does need
 to be known when the element is removed (and the same as when it was added). This might
 be convenient if the item already has an appropriate id (almost always increasing for new
 items) associated with it.
@@ -240,13 +240,13 @@ you want to look up in the database; most will have no entry in the database, bu
 will. Perhaps it's a database of spam links. If you use dablooms in front of the database,
 you can avoid needing to check the database for almost all items which won't be found in
 it anyway, and save a lot of time and effort. It's also much easier to distribute the
-bloom filter than the entire database. But to make it work, you need to determine an "id"
-whenever you add to or remove from the bloom filter. You could store the timestamp when
+Bloom filter than the entire database. But to make it work, you need to determine an "id"
+whenever you add to or remove from the Bloom filter. You could store the timestamp when
 you add the item to the database as another column in the database, and give it to
 `scaling_bloom_add()` as well. When you remove the item, you look it up in the database
 first and pass the timestamp stored there to `scaling_bloom_remove()`. The timestamps for
 new items will be equal or greater, and definitely greater over time. Instead of
-timestamps, you could also use an auto-incrementing index. Checks against the bloom
+timestamps, you could also use an auto-incrementing index. Checks against the Bloom
 don't need to know the id and should be quick. If a check comes back negative, you can be
 sure the item isn't in the database, and skip that query completely. If a check comes
 back positive, you have to query the database, because there's a slight chance that the
