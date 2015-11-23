@@ -1,8 +1,7 @@
-[dablooms](http://github.com/bitly/dablooms)
-========
-
-A Scalable, Counting, Bloom Filter
+Dablooms: A Scalable, Counting, Bloom Filter
 ----------------------------------
+
+_Note_: this project has been mostly unmaintained for a while.
 
 ### Overview
 This project aims to demonstrate a novel bloom filter implementation that can
