@@ -21,8 +21,9 @@ def path_from_env(name, default):
 
 module1 = Extension('pydablooms', 
                     include_dirs = [local_path('../src')],
-                    extra_objects = [os.path.join(path_from_env('BLDDIR', '../build'), 'libdablooms.a')],
-                    sources = [local_path('pydablooms.c')],
+                    sources = [local_path('pydablooms.c'),
+                               local_path('../src/dablooms.c'),
+                               local_path('../src/murmur.c'),  ],
                    )
 
 setup (name = 'pydablooms',

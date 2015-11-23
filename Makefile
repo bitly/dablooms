@@ -153,7 +153,7 @@ $(DESTDIR)$(PY_MOD_DIR)/pydablooms.so: $(PY_BLDDIR)/pydablooms.so
 	@$(INSTALL) -d $(dir $@)
 	@$(INSTALL) $< $@
 
-$(PY_BLDDIR)/pydablooms.so: $(BLDDIR)/libdablooms.a pydablooms/pydablooms.c
+$(PY_BLDDIR)/pydablooms.so: pydablooms/pydablooms.c src/dablooms.c src/murmur.c
 	@echo " PY_BUILD" $@
 	@$(PY_BLD_ENV) $(PYTHON) pydablooms/setup.py build $(PY_FLAGS) >/dev/null
 
