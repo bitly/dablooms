@@ -87,14 +87,6 @@ See pydablooms/README.md for more info.
 The Go bindings "godablooms" are not integrated into the Makefile.
 Install libdablooms first, then look at `godablooms/README.md`
 
-#### PHP (phpdablooms)
-The PHP bindings "phpdablooms" are not integrated into the Makefile.
-Please look at `phpdablooms/README.md`. libdablooms does not need to be installed.
-
-#### Common Lisp (cl-dablooms)
-The Common Lisp bindings "cl-dablooms" are not integrated into the Makefile.
-Install libdablooms first, then look at `cl-dablooms/README.md`
-
 ### Contributing
 If you make changes to C portions of dablooms which you would like merged into the
 upstream repository, it would help to have your code match our C coding style. We use
