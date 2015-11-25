@@ -30,10 +30,6 @@ HELPTEXT = "\
 \n    test_pydablooms            \
 \n\n"
 
-# only bump major on ABI changing release
-SO_VER_MAJOR = 1
-SO_VER_MINOR = 1
-
 prefix = /usr/local
 libdir = $(prefix)/lib
 includedir = $(prefix)/include
@@ -49,6 +45,12 @@ INSTALL = install
 CC = gcc
 AR = ar
 
+### dynamic shared object ###
+
+# shared-object version does not follow software release version
+SO_VER_MAJOR = 1
+SO_VER_MINOR = 1
+
 SO_VER = $(SO_VER_MAJOR).$(SO_VER_MINOR)
 SO_NAME = so
 SO_CMD = -soname
@@ -63,14 +65,21 @@ ifeq ($(UNAME),Darwin)
 endif
 SHARED_LDFLAGS = -shared -Wl,$(SO_CMD),libdablooms.$(SO_EXT_MAJOR)
 
+### sources and outputs ###
+
 SRCS_LIBDABLOOMS = dablooms.c murmur.c
 SRCS_TESTS = test_dablooms.c
-WORDS = /usr/share/dict/words
+
 OBJS_LIBDABLOOMS = $(patsubst %.c, $(BLDDIR)/%.o, $(SRCS_LIBDABLOOMS))
 OBJS_TESTS = $(patsubst %.c, $(BLDDIR)/%.o, $(SRCS_TESTS))
 
 LIB_SYMLNKS = libdablooms.$(SO_NAME) libdablooms.$(SO_EXT_MAJOR)
 LIB_FILES = libdablooms.a libdablooms.$(SO_EXT) $(LIB_SYMLNKS)
+
+# for tests
+WORDS = /usr/share/dict/words
+
+### rules ###
 
 # default target (needs to be first target)
 all: libdablooms
