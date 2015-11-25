@@ -80,6 +80,12 @@ use the `PYTHON` option to make. For example: `make install_pydablooms PYTHON=py
 You can override the module install location with the `PY_MOD_DIR` option to make,
 and the `BLDDIR` and `DESTDIR` options also affect pydablooms.
 
+The Makefile attempts to determine the python module location `PY_MOD_DIR`
+automatically. It prefers a location in `/usr/local`, but you can specify
+`PY_MOD_DIR_ARG=--user` to try to use the location which `pip install --user`
+would use in your HOME dir. You can instead specify `PY_MOD_DIR_ARG=--system`
+to prefer the normal/central system python module dir.
+
 See pydablooms/README.md for more info.
 
 #### Go (godablooms)

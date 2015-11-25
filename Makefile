@@ -149,7 +149,8 @@ clean:
 
 PYTHON = python
 PY_BLDDIR = $(BLDDIR)/python
-PY_MOD_DIR := $(shell $(PYTHON) -c "import distutils.sysconfig ; print(distutils.sysconfig.get_python_lib())")
+PY_MOD_DIR_ARG = # optional: --user or --system
+PY_MOD_DIR := $(shell $(PYTHON) pydablooms/modpath.py $(PY_MOD_DIR_ARG))
 PY_FLAGS = --build-lib=$(PY_BLDDIR) --build-temp=$(PY_BLDDIR)
 PY_BLD_ENV = BLDDIR="$(BLDDIR)"
 
