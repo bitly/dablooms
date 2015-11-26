@@ -45,14 +45,16 @@ static int Dablooms_init(Dablooms *self, PyObject *args, PyObject *kwds)
     return 0;
 }
 
+
 static int contains(Dablooms *self, PyObject *key)
 {
-    if (!PyString_Check(key)) {
-      return 0; /* return False */
+    const char *hash;
+    int len;
+    
+    if (!PyArg_Parse(key, "s#", &hash, &len)) {
+        return -1;
     }
-    return scaling_bloom_check(self->filter,
-                               PyString_AsString(key),
-                               (int)PyString_Size(key));
+    return scaling_bloom_check(self->filter, hash, len);
 }
 
 static PyObject *check(Dablooms *self, PyObject *args)
