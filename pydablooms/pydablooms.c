@@ -52,7 +52,7 @@ static int contains(Dablooms *self, PyObject *key)
     int len;
     
     if (!PyArg_Parse(key, "s#", &hash, &len)) {
-        return 0; /* return False */
+        return -1;
     }
     return scaling_bloom_check(self->filter, hash, len);
 }
