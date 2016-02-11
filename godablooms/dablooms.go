@@ -41,7 +41,7 @@ func NewScalingBloomFromFile(capacity C.uint, errorRate C.double, filename strin
 // apparently this is an unsupported feature of cgo
 // we should probably use runtime.SetFinalizer
 // see: https://groups.google.com/forum/?fromgroups#!topic/golang-dev/5cD0EmU2voI
-func (sb *ScalingBloom) destroy() {
+func (sb *ScalingBloom) Destroy() {
 	C.free_scaling_bloom(sb.cfilter)
 }
 
